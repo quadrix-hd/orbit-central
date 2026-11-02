@@ -1,4 +1,4 @@
-# Orbit Central · Go 0.9.0
+# Orbit Central · Go 0.10.0
 
 Lokales Dashboard für Proxmox VE und optional Proxmox Backup Server.
 Der Server, die Proxmox-Anbindung, Aufgabenverarbeitung, Konsole, Registry und
@@ -177,3 +177,23 @@ Go 1.25+; Docker nutzt den festgelegten Toolchain-Stand. Für reale NoCloud-ISO-
 Erstellung außerhalb des Containers muss xorriso installiert sein. Go-Tests
 nutzen simulierte Proxmox-Antworten und lokale HTTPS-/WebSocket-Testserver.
 Teststand und Grenzen: [QA_REPORT.md](QA_REPORT.md).
+
+## Einstellungen ab 0.10
+
+Die neue Einstellungsseite bietet drei Farbschemata (Cloud, Ocean, Dusk),
+normal/groß gesetzte lokale Orbit-Sans-Schrift, kompakte/komfortable Tabellen
+und eine automatische Aktualisierung mit 15/30/60/120 Sekunden oder manueller
+Aktualisierung. Einstellungen werden im Go-Dienst gespeichert; vor dem Login
+kann die zuletzt verwendete Darstellung aus dem Browser übernommen werden.
+
+Weitere Bereiche: Standardressourcen für neue ISO-/Registry-VMs,
+Verbindungen bearbeiten/entfernen, Marketplace-Modus und Katalogquelle,
+Administratorpasswort ändern, andere Sitzungen abmelden, Systemstatus sowie
+eine konsistente Workspace-Sicherung herunterladen. Die Sicherung enthält
+vertrauliche Zugangsdaten und muss geschützt aufbewahrt werden.
+
+Eine neue Katalogadresse wird gespeichert und nach `docker compose restart
+orbit` aktiv. CA-Mount, öffentliche Adresse und Ports bleiben ausdrücklich
+Deployment-Konfiguration in `.env`/`compose.yaml`; die UI zeigt deren Status.
+Verbindungen mit offenen Aufgaben oder verknüpften Blueprints lassen sich
+nicht entfernen. Beim Passwortwechsel werden andere Sitzungen verworfen.

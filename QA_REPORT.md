@@ -63,3 +63,19 @@ Orbit-Benutzer, RBAC und SSO sind weiterhin Produktlücken. Diese waren bereits
 im bisherigen Backend nicht implementiert. Cloud-Image-Registry setzt VE 9+
 und passende Storage-Inhaltstypen voraus. Lokaler Image-Cache ersetzt keine
 Offline-Paketquelle für die Gastsoftware.
+
+## Erweiterung 0.10.0
+
+87 Go-Tests und Untertests bestehen einschließlich Race-Prüfung. Neue Tests
+prüfen dauerhafte Darstellungseinstellungen und Grenzen, Passwortwechsel
+(auch mit Leerzeichen im bisherigen Passwort), Sitzungswiderruf, validierte
+Katalogquelle mit Aktivierung beim Neustart, Verbindungsentfernung ohne
+Proxmox-Schreibzugriff und geschützten Sicherungsdownload als gültiges Archiv.
+Frontend-Prüfungen umfassen sechs neue Einstellungsbereiche, Ressourcenwerte
+und HTML-Escaping der Systeminformationen.
+
+Die Gestaltung nutzt lokale Orbit-Sans-Schriften, größere Standardtexte,
+Indigo/Lavendel bzw. Petrol/Mint sowie ein optionales dunkles Farbschema.
+Die lokale Preview-Infrastruktur ist nicht verfügbar; die statische Demo
+wird für die visuelle Kontrolle veröffentlicht. Reale Proxmox-Systeme werden
+dabei nicht angesprochen.

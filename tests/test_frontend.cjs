@@ -61,7 +61,7 @@ console.log('Frontend: 12 views, filters, totals, HTML escaping, configurator an
   assert.equal(submitted.length,2);assert.equal(submitted[0].request_key,submitted[1].request_key);
   // Refresh requests issued during an earlier poll must not be silently discarded.
   let hits=0;context.fetch=async path=>{hits++;return {ok:true,status:200,json:async()=>[]}};
-  await Promise.all([run('refresh(false)'),run('refresh(false)')]);assert.equal(hits,12);
+  await Promise.all([run('refresh(false)'),run('refresh(false)')]);assert.equal(hits,14);
   console.log('Frontend: modal submission lock, 401 cleanup, stable retry keys and queued refreshes passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
 
@@ -77,3 +77,8 @@ assert.ok(!run('market()').includes('<script>unsafe</script>'));
 run("state.mode='demo';loadDemo()");assert.ok(run('vms()').includes('data-vm="demo:100"'));
 assert.ok(run('shell()').includes('prism-topbar'));assert.ok(!run('shell()').includes('resource-tree'));assert.ok(!run('shell()').includes('class="rail"'));
 console.log('Frontend: central marketplace escaping, VM links and single-navigation shell passed.');
+
+// Settings navigation and HTML escaping share the real rendering functions.
+for(const tab of ['appearance','connections','defaults','marketplace','account','system']){run(`state.settingsTab='${tab}';state.systemStatus={version:'0.10.0',public_origin:'<script>bad</script>'};state.sessions=[]`);const html=run('settings()');assert.ok(html.includes('settings-content'));assert.ok(!html.includes('<script>bad</script>'));assert.ok(!html.includes('undefined'));}
+run("state.preferences={...preferenceDefaults,default_cpu:8,theme:'ocean'}");assert.equal(run('preferences().default_cpu'),8);assert.ok(run("state.settingsTab='defaults';settings()").includes('value="8"'));
+console.log('Frontend: six settings sections, preference values and system-status escaping passed.');

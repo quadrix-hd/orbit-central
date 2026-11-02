@@ -24,7 +24,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.9.0"
+const Version = "0.10.0"
 
 type Server struct {
 	Store          *Store
@@ -39,7 +39,9 @@ type Server struct {
 }
 
 func NewServer(s *Store, p *Proxmox, origin, static string) *Server {
-	return &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}, Catalog: NewCatalog(s.Dir, os.Getenv("ORBIT_CATALOG_URL"), os.Getenv("ORBIT_CATALOG_MODE")), Console: newConsole(), ctx: context.Background()}
+	server := &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}, Catalog: NewCatalog(s.Dir, os.Getenv("ORBIT_CATALOG_URL"), os.Getenv("ORBIT_CATALOG_MODE")), Console: newConsole(), ctx: context.Background()}
+	server.Catalog = NewCatalog(s.Dir, server.catalogSource(), os.Getenv("ORBIT_CATALOG_MODE"))
+	return server
 }
 
 type session struct{ ID, CSRF string }
@@ -324,6 +326,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		http.SetCookie(w, &http.Cookie{Name: "orbit_session", Path: "/", HttpOnly: true, Secure: strings.HasPrefix(s.Origin, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: -1})
 		writeJSON(w, 200, map[string]bool{"ok": true})
 		return nil
+	}
+	if handled, err := s.settingsRoutes(w, r, data, session); handled || err != nil {
+		return err
 	}
 	if handled, err := s.extraRoutes(w, r, data, session); handled || err != nil {
 		return err
