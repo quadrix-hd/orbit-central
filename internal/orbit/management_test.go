@@ -354,3 +354,15 @@ func TestNICDefaultMTUIsOmittedRatherThanInvalidZero(t *testing.T) {
 		t.Fatal(f.forms)
 	}
 }
+func TestLXCDNSClearRestoresHostDefaults(t *testing.T) {
+	s, f := managementServer(t)
+	f.guestType = "lxc"
+	f.config["nameserver"] = "192.0.2.1"
+	d := editInput("options", doc{"nameserver": "", "searchdomain": ""})
+	op := submit(t, s, d)
+	s.processOperation(context.Background(), op)
+	args := f.forms[0]
+	if args.Has("nameserver") || args.Has("searchdomain") || !contains(args.Get("delete"), "nameserver") || !contains(args.Get("delete"), "searchdomain") {
+		t.Fatal(args)
+	}
+}

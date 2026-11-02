@@ -365,7 +365,12 @@ func (s *Server) guestEditArgs(ctx context.Context, c Connection, vm, d doc) doc
 						fail("Ungültige DNS-Suchdomäne.")
 					}
 				}
-				a[k] = x
+				if x == "" {
+					deletes := strings.Trim(str(a["delete"])+","+k, ",")
+					a["delete"] = deletes
+				} else {
+					a[k] = x
+				}
 			default:
 				fail("Nicht unterstützte Gastoption: " + k)
 			}
