@@ -87,7 +87,11 @@ func values(d doc) url.Values {
 	v := url.Values{}
 	for k, x := range d {
 		if x != nil {
-			v.Set(k, str(x))
+			if n, ok := x.(float64); ok {
+				v.Set(k, strconv.FormatFloat(n, 'f', -1, 64))
+			} else {
+				v.Set(k, str(x))
+			}
 		}
 	}
 	return v
@@ -341,6 +345,12 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 		return old, 200
 	}
 	action := field(d, "action", 20, "")
+	if action == "storage_config" {
+		return s.submitStorage(ctx, d, key)
+	}
+	if action == "guest_edit" {
+		return s.submitGuestEdit(ctx, d, key)
+	}
 	if action == "infrastructure" {
 		return s.submitInfra(ctx, d, key)
 	}
@@ -583,6 +593,14 @@ func (s *Server) hardwareArgs(ctx context.Context, c Connection, vm, d doc, acti
 }
 
 func (s *Server) processOperation(ctx context.Context, op doc) {
+	if op["action"] == "storage_config" {
+		s.processStorage(ctx, op)
+		return
+	}
+	if op["action"] == "guest_edit" {
+		s.processGuestEdit(ctx, op)
+		return
+	}
 	if op["action"] == "infrastructure" {
 		s.processInfra(ctx, op)
 		return

@@ -36,6 +36,9 @@ func (s *Server) moduleData(r *http.Request, c Connection, section string) (any,
 						rows = append(rows, row)
 					}
 				}
+				sort.Slice(rows, func(i, j int) bool {
+					return str(rows[i]["storage"])+"/"+str(rows[i]["node"]) < str(rows[j]["storage"])+"/"+str(rows[j]["node"])
+				})
 				value["data"] = rows
 			}
 			result[key] = value
@@ -94,6 +97,7 @@ func (s *Server) vmDetailData(r *http.Request, c Connection, vmid int) (doc, err
 	if vm == nil {
 		return nil, problem("VM oder Container nicht gefunden.", 404)
 	}
+	vm["connection_id"] = c.ID
 	node, _ := vm["node"].(string)
 	if requested := r.URL.Query().Get("node"); requested != "" && requested != node {
 		return nil, problem("Die VM befindet sich inzwischen auf einem anderen Node. Inventar aktualisieren.", 409)
@@ -108,7 +112,7 @@ func (s *Server) vmDetailData(r *http.Request, c Connection, vmid int) (doc, err
 		return nil, problem("Ungültige VM-Konfiguration.", 502)
 	}
 	clean := map[string]any{}
-	for _, key := range []string{"name", "cores", "sockets", "memory", "ostype", "agent", "onboot", "tags", "description", "template", "lock", "boot"} {
+	for _, key := range []string{"name", "cores", "sockets", "memory", "ostype", "agent", "onboot", "tags", "description", "template", "lock", "boot", "digest", "cpu", "cpulimit", "cpuunits", "balloon", "swap", "hostname", "protection", "bios", "machine", "nameserver", "searchdomain"} {
 		if value, exists := config[key]; exists {
 			clean[key] = value
 		}
@@ -125,12 +129,12 @@ func (s *Server) vmDetailData(r *http.Request, c Connection, vmid int) (doc, err
 	sort.Strings(keys)
 	for _, key := range keys {
 		value := fmt.Sprint(config[key])
-		if diskPattern.MatchString(key) && !strings.Contains(value, "cloudinit") && !strings.Contains(value, "media=cdrom") {
+		if (diskPattern.MatchString(key) || key == "rootfs" || regexp.MustCompile(`^mp[0-9]+$`).MatchString(key)) && !strings.Contains(value, "cloudinit") && !strings.Contains(value, "media=cdrom") {
 			size := "—"
 			if match := sizePattern.FindStringSubmatch(value); len(match) > 1 {
 				size = match[1]
 			}
-			disks = append(disks, map[string]any{"device": key, "size": size})
+			disks = append(disks, map[string]any{"device": key, "size": size, "volume": strings.Split(value, ",")[0], "mountpoint": propertyParts(value)["mp"]})
 		}
 		if networkPattern.MatchString(key) {
 			parts := map[string]string{}
@@ -140,6 +144,7 @@ func (s *Server) vmDetailData(r *http.Request, c Connection, vmid int) (doc, err
 					parts[k] = v
 				}
 			}
+			clean[key] = value
 			vlan, fw := parts["tag"], parts["firewall"]
 			if vlan == "" {
 				vlan = "0"
@@ -148,13 +153,13 @@ func (s *Server) vmDetailData(r *http.Request, c Connection, vmid int) (doc, err
 				fw = "0"
 			}
 			mac := ""
-			for _, model := range []string{"virtio", "e1000", "rtl8139", "vmxnet3"} {
+			for _, model := range []string{"virtio", "e1000", "rtl8139", "vmxnet3", "e1000e"} {
 				if parts[model] != "" {
 					mac = parts[model]
 					break
 				}
 			}
-			networks = append(networks, map[string]any{"device": key, "bridge": parts["bridge"], "vlan": vlan, "firewall": fw, "mac": mac})
+			networks = append(networks, map[string]any{"device": key, "bridge": parts["bridge"], "vlan": vlan, "firewall": fw, "mac": defaultText(mac, parts["hwaddr"]), "name": parts["name"], "ip": parts["ip"], "ip6": parts["ip6"], "gw": parts["gw"], "gw6": parts["gw6"], "mtu": parts["mtu"], "rate": parts["rate"]})
 		}
 	}
 	return map[string]any{"vm": vm, "config": clean, "disks": disks, "networks": networks, "snapshots": s.safeRead(r, c, base+"/snapshot", nil), "metrics": s.safeRead(r, c, base+"/rrddata", url.Values{"timeframe": {"hour"}, "cf": {"AVERAGE"}})}, nil

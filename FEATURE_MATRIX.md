@@ -1,4 +1,4 @@
-# Funktionsumfang und verbleibende Lücken · Go 0.11
+# Funktionsumfang und verbleibende Lücken · Go 0.12
 
 Ziel ist eine eigenständige zentrale Proxmox-Oberfläche. Der aktuelle Stand ist
 noch keine vollständige Funktionsgleichheit mit Proxmox, PegaProx oder Nutanix.
@@ -7,12 +7,12 @@ einer Hauptnavigation, Kontextauswahl, Ressourcenübersichten und Aufgaben.
 
 | Bereich | Implementiert | Weiterhin offen |
 | --- | --- | --- |
-| Live-Anzeige | SSE, laufendes Inventar/Aufgaben/Module, ausgewählte VM-Details, Wiederverbindung, unveränderte Formulare/Konsole | Echte Cluster-Abnahme und Lasttest mit vielen parallelen Clients |
+| Live-Anzeige | Separater direkter CPU/RAM/Swap-Kanal im Sekundentakt, gemeinsame Node-Abfragen, SSE-Inventar/Aufgaben/Module, Schutz vor alten Antworten, stabile Storage-Reihenfolge | Echte Cluster-Abnahme und Lasttest mit vielen parallelen Clients |
 | Host-Netzwerk | Linux-Bridge/Bond/VLAN, IPv4/IPv6, Gateway, MTU, Ports, VLAN-Basis, explizites Anwenden/Verwerfen, Diff | Vollständige OVS-, VXLAN-/EVPN-/SDN-, Controller-/Subnetz- und DHCP-Editoren |
 | Firewall | Regeln und Optionen für Datacenter/Host/QEMU/LXC, Erstellen/Bearbeiten/Löschen/Umordnen, Digest-/Revisionsprüfung | Vollständige Alias-/IPSet-/Security-Group-Editoren, alle erweiterten Backend-Optionen und Logs |
-| VM | Grundhardware, CPU/RAM, NIC/VLAN, ISO, Snapshot, Backup/Restore, Migration, HA, Erstellung, Löschen, noVNC | Vollständige PCI-/USB-/EFI-/TPM-/Cloud-init-/CPU-Modell- und weitere Proxmox-Detailkonfiguration |
-| LXC | Inventar, Grundverwaltung, Snapshots, Backup, gestoppte Migration, HA | Erstellung, Terminal und vollständiger Ressourcen-/Mountpoint-Editor |
-| Storage | Konfiguration/Kapazität lesen, Image-Import-Inhaltstyp freigeben | Vollständige Storage-/Ceph-/Volume-Verwaltung |
+| VM | CPU/RAM in MiB, Sockets/CPU-Modell/Ballooning, NIC/MAC/Rate/MTU, Boot/BIOS/Machine/Agent, Disk hinzufügen/vergrößern/verschieben, ISO, Snapshot, Backup/Restore, Migration, HA, Erstellung, Löschen, noVNC | Vollständige PCI-/USB-/EFI-/TPM-/Cloud-init- und weitere Proxmox-Detailkonfiguration |
+| LXC | Ressourcen in MiB, Swap, IP/Gateway/DNS, NICs, verwaltete Mountpoints hinzufügen/vergrößern/verschieben, Optionen, Snapshots, Backup, gestoppte Migration, HA | Erstellung, Restore, Terminal und weitere Mountpoint-/Feature-Optionen |
+| Storage | Inhaltstypen/Nodes/Aktivierung/Shared bearbeiten, Volumes ansehen, Directory/NFS/LVM-thin/ZFS-Konfiguration anlegen | Ceph-/Pool-/VG-Verwaltung, Storage-Credentials bearbeiten, Volume-Lösch-/Upload-Workflows und weitere Backend-Optionen |
 | Sicherung/HA | VM-Aktionen, HA-Gastzustände, Status/Jobs lesen | Backup-Zeitplan-, Replikations- und vollständige HA-Regel-Editoren, orchestrierte DR-Pläne |
 | Hosts/Lifecycle | Versionen/Updateübersicht lesen | DNS/NTP/Repositories/Dienste, geprüfte Updates/Upgrades und Host-Shell |
 | Identität | Ein Administrator, Passwort, Sitzungen, CSRF | Mehrere Benutzer, RBAC, SSO, Proxmox-Permissions-/Pool-Editoren |

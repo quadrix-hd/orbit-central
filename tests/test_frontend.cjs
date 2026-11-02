@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const elements=new Map();
 function element(selector){if(!elements.has(selector))elements.set(selector,{innerHTML:'',textContent:'',value:'',content:selector==='meta[name="orbit-mode"]'?'demo':'',classList:{add(){},remove(){}},addEventListener(){},querySelector:s=>element(s),querySelectorAll:()=>[],showModal(){this.open=true},close(){this.open=false},setAttribute(){},focus(){},setSelectionRange(){},readOnly:false});return elements.get(selector)}
 const context={URLSearchParams,console,document:{querySelector:element,querySelectorAll:()=>[],activeElement:null,hidden:false},localStorage:{getItem:()=>null,setItem(){}},window:{scrollTo(){}},setInterval(){},setTimeout(){return 1},clearTimeout(){},crypto,AbortSignal,FormData:class{},Date};
-vm.createContext(context);for(const file of ['app.js','vm-workspace.js','infrastructure.js','live.js','bootstrap.js'])vm.runInContext(fs.readFileSync('dist/'+file,'utf8'),context);
+vm.createContext(context);for(const file of ['app.js','vm-workspace.js','infrastructure.js','management.js','live.js','bootstrap.js'])vm.runInContext(fs.readFileSync('dist/'+file,'utf8'),context);
 const run=source=>vm.runInContext(source,context);
 assert.equal(run('state.mode'),'demo');assert.equal(run('state.authenticated'),true);
 for(const page of ['overview','clusters','vms','market','jobs','settings']){run(`nav('${page}')`);assert.ok(element('#app').innerHTML.includes('ORBIT CENTRAL'));assert.ok(!element('#app').innerHTML.includes('undefined'));}

@@ -1,4 +1,4 @@
-# Orbit Central · Go 0.11.0
+# Orbit Central · Go 0.12.0
 
 Lokales Dashboard für Proxmox VE und optional Proxmox Backup Server.
 Der Server, die Proxmox-Anbindung, Aufgabenverarbeitung, Konsole, Registry und
@@ -246,3 +246,44 @@ werden nicht automatisch wiederholt. Bestehende Bestätigungsdialoge bleiben
 an den ursprünglich gewählten Cluster und Node gebunden.
 
 Coterm-Einordnung und vollständige offene Bereiche: [FEATURE_MATRIX.md](FEATURE_MATRIX.md).
+
+## Go 0.12: direkte Lastmessung und Konfiguration
+
+CPU/RAM verwenden einen getrennten SSE-Messwertkanal. Orbit liest pro Online-Node
+`/status`, `/qemu?full=1` und `/lxc`, nicht die Lastwerte aus dem verzögerten
+`/cluster/resources`-Cache. Proxmox berechnet in den Gastlisten den aktuellen
+lokalen VM-/CT-Status. Eine Runde startet im Sekundentakt; Antwortzeit und
+Auslastung kommen hinzu. Maximal zwölf Node-Abfragen laufen pro Cluster parallel,
+einzelne Abfragen sind auf 1,5 Sekunden, die Runde auf 2,2 Sekunden begrenzt.
+Gleichzeitige Browser teilen laufende Abfragen und eine höchstens 900 ms alte
+Messung. Historische RRD-Diagramme bleiben separat und haben ihre eigene Auflösung.
+
+Der Browser überschreibt frische Lastwerte nicht mit älteren Inventar-/Detail-
+Antworten. Storage-Zeilen werden dauerhaft nach Storage-ID und Node sortiert.
+Eine Messwert-Altersanzeige macht ausbleibende Daten erkennbar. Das ist eine
+API-basierte Nah-Echtzeit-Anzeige, kein verzögerungsfreier Push aus dem Hypervisor.
+Reverse-Proxys müssen SSE ohne Pufferung und mit ausreichend langer Lesezeit
+weiterleiten; Orbit sendet `X-Accel-Buffering: no` und Heartbeats.
+
+- **Storage:** Inhalte/Node-Beschränkung/Aktivierung/Shared-Flag bestehender
+  Konfigurationen bearbeiten, Volumes pro Node ansehen. Vorhandene Directory-,
+  NFS-, LVM-thin- und ZFS-Backends neu einbinden. Keine Pool-/VG-Erstellung,
+  Formatierung oder automatische Löschung von Volumes.
+- **QEMU und LXC:** Ressourcen in MiB, CPU-Limit/-Gewichtung, QEMU Sockets/CPU-Modell/
+  Ballooning und LXC Swap. Optionen, Name/Hostname, Autostart, Tags, Beschreibung,
+  Löschschutz, QEMU Agent/Boot/BIOS/Machine sowie LXC DNS. Nur geänderte Felder
+  werden gespeichert, andere Konfigurationsoptionen bleiben bestehen.
+- **Netzwerkkarten:** Modell/MAC/Bridge/VLAN/Firewall/Rate/MTU/Linkstatus,
+  bei LXC auch Interface-Name, IPv4/IPv6 und Gateways.
+- **Datenträger:** neue QEMU-Disks bzw. verwaltete LXC-Mountpoints anlegen,
+  vorhandene Datenvolumes vergrößern oder auf anderes Storage kopieren/umschalten.
+  Die Quelle bleibt beim Storage-Wechsel als ungenutztes Volume erhalten.
+  Datenträgeränderungen benötigen einen gestoppten Gast; Orbit stoppt ihn nicht.
+  Unterstützte Ressourcen-/Netzwerkänderungen können bei laufenden Gästen
+  übernommen oder von Proxmox bis zum nächsten Start vorgemerkt werden.
+
+Jeder Schreibauftrag benötigt Bestätigung und den Digest der gelesenen
+Konfiguration. Die Queue prüft vor dem Schreiben erneut und verfolgt UPIDs.
+Eine unklare Übermittlung wird niemals automatisch wiederholt. Diese Version
+ist weiterhin keine vollständige PegaProx-Funktionsgleichheit; siehe
+[Vergleich und offene Arbeit](PEGAPROX_PARITY.md).

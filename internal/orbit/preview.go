@@ -15,7 +15,7 @@ func ExportPreview() error {
 		if !strings.Contains(index, `name="orbit-mode" content="demo"`) {
 			fail("Preview benötigt ausdrücklich Demomodus.")
 		}
-		for _, asset := range []string{"app.css", "app.js", "vm-workspace.js", "infrastructure.js", "live.js", "bootstrap.js"} {
+		for _, asset := range []string{"app.css", "app.js", "vm-workspace.js", "infrastructure.js", "management.js", "live.js", "bootstrap.js"} {
 			sum := sha256.Sum256(must(os.ReadFile(filepath.Join("dist", asset))))
 			pattern := regexp.MustCompile(`"/` + regexp.QuoteMeta(asset) + `(?:\?[^"]*)?"`)
 			index = pattern.ReplaceAllString(index, `"/`+asset+`?v=`+hex.EncodeToString(sum[:6])+`"`)
@@ -27,14 +27,14 @@ func ExportPreview() error {
 		if e := os.MkdirAll(out, 0755); e != nil {
 			panic(e)
 		}
-		for _, name := range []string{"index.html", "app.css", "app.js", "vm-workspace.js", "infrastructure.js", "live.js", "bootstrap.js", "orbit-sans-regular.woff", "orbit-sans-bold.woff"} {
+		for _, name := range []string{"index.html", "app.css", "app.js", "vm-workspace.js", "infrastructure.js", "management.js", "live.js", "bootstrap.js", "orbit-sans-regular.woff", "orbit-sans-bold.woff"} {
 			raw := must(os.ReadFile(filepath.Join("dist", name)))
 			if name == "index.html" {
 				text := string(raw)
 				if !strings.Contains(text, `name="orbit-mode" content="demo"`) {
 					fail("Preview benötigt ausdrücklich Demomodus.")
 				}
-				for _, asset := range []string{"app.css", "app.js", "vm-workspace.js", "infrastructure.js", "live.js", "bootstrap.js"} {
+				for _, asset := range []string{"app.css", "app.js", "vm-workspace.js", "infrastructure.js", "management.js", "live.js", "bootstrap.js"} {
 					text = strings.ReplaceAll(text, `"/`+asset, `"./`+asset)
 				}
 				raw = []byte(text)

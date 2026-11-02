@@ -18,3 +18,5 @@ Ab 0.11: Live-Streams und direkte Linux-Netzwerk-/Firewall-Regelbearbeitung
 sind implementiert. Die weiterhin offenen Teilbereiche sind präzisiert in
 FEATURE_MATRIX.md; die ältere allgemeine Einstufung als rein lesende Module
 gilt für diese implementierten Teilbereiche nicht mehr.
+
+Go 0.12 erweitert direkte Lastmessung sowie Storage-/QEMU-/LXC-Konfiguration. Vollständiger PegaProx-Ersatz ist das Ziel, nicht der aktuelle Fertigstellungsstand. Die offenen Bereiche stehen in PEGAPROX_PARITY.md.

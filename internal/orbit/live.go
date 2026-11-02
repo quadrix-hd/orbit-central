@@ -213,6 +213,43 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request, current *session
 			}
 		}
 	}()
+	// Current CPU/RAM samples use their own lane. Inventory, RRD, storage and
+	// configuration requests cannot block these frames.
+	metricsFrames := make(chan doc, 1)
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			connections, err := s.Store.Connections()
+			if err == nil {
+				var wg sync.WaitGroup
+				for _, connection := range connections {
+					c := connection
+					if c.Kind != "pve" {
+						continue
+					}
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						readCtx, stop := context.WithTimeout(ctx, 2200*time.Millisecond)
+						defer stop()
+						rows := s.currentMetrics(readCtx, c)
+						frame := doc{"at": now(), "samples": rows}
+						select {
+						case metricsFrames <- frame:
+						case <-ctx.Done():
+						}
+					}()
+				}
+				wg.Wait()
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
 	auth := time.NewTicker(2 * time.Second)
 	defer auth.Stop()
 	heartbeat := time.NewTicker(10 * time.Second)
@@ -231,6 +268,10 @@ func (s *Server) events(w http.ResponseWriter, r *http.Request, current *session
 			}
 		case <-heartbeat.C:
 			if e := send("heartbeat", doc{"at": now()}); e != nil {
+				return nil
+			}
+		case frame := <-metricsFrames:
+			if e := send("metrics", frame); e != nil {
 				return nil
 			}
 		case frame := <-frames:

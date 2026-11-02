@@ -116,3 +116,30 @@ Coterm wurde anhand seines offiziellen Quellcodes geprüft, nicht im Netzwerk
 des Nutzers getestet oder umkonfiguriert.
 
 Abschließender lokaler Lauf: 120 Go-Tests und Untertests einschließlich Race-Prüfung bestehen; Go-Vet, CGO-freier Build und beide Frontend-/DOM-Prüfungen sind erfolgreich.
+
+## Go 0.12 · direkte Lastmessung, Storage und Gastkonfiguration
+
+- 152 Go-Tests einschließlich Untertests mit `go test -race ./...` bestanden.
+- Direkte `/nodes/{node}/status`, `/qemu?full=1` und `/lxc`-Werte unterscheiden sich
+  im Test absichtlich vom alten Cluster-Cache. Die SSE-Messwerte erreichen den
+  Client im Sekundentakt, obwohl APT-/Moduldaten blockiert sind.
+- Zwanzig gleichzeitige Messwertabonnements teilen eine Runde. Nach Ablauf der
+  kurzen Cache-Zeit wird erneut gelesen. Es gibt keine Proxmox-Schreibabfragen
+  im Messwertpfad.
+- QEMU-/LXC-Ressourcen mit MiB-RAM und Swap, dezimaler Übertragung großer Werte,
+  CPU-Limits, Netzwerkänderungen mit erhaltenen MAC-/Modell-/Spezialoptionen,
+  Agentoptionen sowie Disk-/Mountpoint-Erstellung, Resize und Storage-Wechsel
+  gegen Fake-Proxmox getestet. Keine automatischen Lifecycle-Aufrufe.
+- Storage-Teilspeicherung, Anlegen, Aufheben einer Node-Beschränkung, redigierte
+  Antworten und sortierte Volume-Listen geprüft. Stale Digests und fremde/feste
+  Felder verhindern Schreibzugriffe; unklare Übermittlungen werden nicht wiederholt.
+- `npm test`: alle bisherigen Render-/DOM-Prüfungen plus Schutz gegen alte
+  Inventar-/Detailantworten, feste Storage-Reihenfolge bei vertauschter API-Antwort,
+  erhaltene Formulare und QEMU-/LXC-Ressourcen-/Netzwerk-/Disk-Editoren bestanden.
+- Go-Build ohne CGO und `go vet ./...` lokal geprüft.
+
+Die Tests ersetzen keine reale Proxmox-Abnahme: insbesondere Storage-Rechte,
+Backend-Kompatibilität, Hotplug/Pending und die Weiterleitung von SSE durch den
+Reverse-Proxy sind installationsabhängig. Es wurden keine echten Hosts/Gäste
+verändert oder neu gestartet. Der PegaProx-Abgleich steht in PEGAPROX_PARITY.md;
+volle Funktionsgleichheit wird ausdrücklich nicht als abgeschlossen ausgewiesen.

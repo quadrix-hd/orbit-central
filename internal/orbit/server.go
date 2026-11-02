@@ -24,7 +24,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.11.0"
+const Version = "0.12.0"
 
 type Server struct {
 	Store          *Store
@@ -37,6 +37,9 @@ type Server struct {
 	ctx            context.Context
 	workers        sync.WaitGroup
 	liveClients    int
+	metricsMu      sync.Mutex
+	metricsCache   map[string]metricCache
+	metricsRunning map[string]chan struct{}
 }
 
 func NewServer(s *Store, p *Proxmox, origin, static string) *Server {
@@ -533,7 +536,7 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		name = "index.html"
 	}
-	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff"}
+	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "management.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff"}
 	mime, ok := allowed[name]
 	if !ok {
 		return problem("Nicht gefunden.", 404)
