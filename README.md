@@ -235,3 +235,20 @@ Ein vollständiger Ersatz aller Proxmox-WebUI-Funktionen ist weiterhin nicht err
 Kompakter Arbeitsbereich mit Funktionsleiste und Cluster-/Node-/Gastbaum. Fehlerantworten enthalten eine Fehler-ID; Logs protokollieren Statuscode und Laufzeit ohne Request-Bodies, Tokens oder Query-Parameter. HEAD-Abfragen werden unterstützt. Proxmox-Fehler unterscheiden TLS-Probleme und Verbindungsfehler und nennen bei verfügbaren Validierungsantworten Feldnamen und erforderliche Privilegien, ohne rohe Antworten auszugeben.
 
 Der zentrale Marketplace hat einen lokalen, integritätsgeprüften Paketspiegel mit Start-/Update-Synchronisierung. Die tatsächliche Herausgeber-URL und das Bereitstellungsformat fehlen noch; automatische VM-Imports daraus sind noch nicht angeschlossen. [MARKETPLACE_SOURCE.md](MARKETPLACE_SOURCE.md) beschreibt den Transport und die Grenzen.
+
+## Update von einer bestehenden GitHub-Installation
+
+Der Update-Helfer erhält `.env` und führt lokale Änderungen an `compose.yaml` (z. B. den CA-Mount) mit der neuen Quelldatei zusammen. Vorher wird eine geschützte Konfigurationssicherung unter `backups/config-*` angelegt. Bei Konflikten oder weiteren lokalen Quellcodeänderungen bricht er ab. Anschließend nutzt er den vorhandenen Updateweg mit Datenbanksicherung und Image-Rollback.
+
+Für eine Installation unter `/orbit-central`, als root:
+
+```bash
+curl -fL https://raw.githubusercontent.com/quadrix-hd/orbit-central/main/scripts/pull-update.sh -o /tmp/orbit-pull-update.sh
+bash /tmp/orbit-pull-update.sh /orbit-central
+```
+
+Dabei wird nur Orbit für das Update kurz gestoppt und neu gestartet. Es werden keine Proxmox-Gäste neu gestartet. Die realen Docker-Abläufe benötigen weiterhin Abnahme; der neue Git-Helfer wurde mit echten lokalen Git-Repositories und einem simulierten Update-Aufruf geprüft.
+
+## Zentrale Registry-Webseite
+
+Der Ordner `docs/` enthält die Registry-Seite, `catalog.json` und sechs lokale Cloud-init-Rezeptdateien mit Größen und SHA-256-Prüfsummen. GitHub Pages kann den Ordner von `main` veröffentlichen. Die Rezepte sind keine VM-Abbilder und wurden nicht gegen reale Gäste abgenommen. Automatisches VM-Provisioning daraus bleibt offen.

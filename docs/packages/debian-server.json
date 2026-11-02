@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "id": "debian-server",
+  "name": "Debian Server",
+  "version": "0.1.0",
+  "kind": "cloud-init-recipe",
+  "base_os": "debian-13",
+  "status": "deployment-adapter-pending",
+  "cloud_init": {
+    "package_update": true,
+    "packages": [
+      "qemu-guest-agent"
+    ]
+  },
+  "notes": "Rezeptdatei; kein VM-Abbild. Automatischer VM-Import in Orbit noch nicht implementiert. Nicht gegen einen realen Gast abgenommen."
+}

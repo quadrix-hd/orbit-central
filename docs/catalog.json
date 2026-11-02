@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "revision": "2026-11-02.1",
+  "packages": [
+    {
+      "id": "ubuntu-server",
+      "name": "Ubuntu Server",
+      "version": "0.1.0",
+      "description": "Grundkonfiguration mit QEMU Guest Agent. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "category": "Betriebssystem",
+      "assets": [
+        {
+          "name": "ubuntu-server.json",
+          "url": "packages/ubuntu-server.json",
+          "size": 438,
+          "sha256": "9c831b61449f6611197c2915812177208d7e548e44c9b067e6163d09d524a776"
+        }
+      ]
+    },
+    {
+      "id": "debian-server",
+      "name": "Debian Server",
+      "version": "0.1.0",
+      "description": "Schlanke Server-Grundkonfiguration mit Guest Agent. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "category": "Betriebssystem",
+      "assets": [
+        {
+          "name": "debian-server.json",
+          "url": "packages/debian-server.json",
+          "size": 435,
+          "sha256": "81083f89cc50220c2b331788ce448174c128dc6970e0e5731cdd864c75ff2cd0"
+        }
+      ]
+    },
+    {
+      "id": "docker-host",
+      "name": "Docker Host",
+      "version": "0.1.0",
+      "description": "Docker Engine aus den Ubuntu-Paketquellen. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "category": "Container",
+      "assets": [
+        {
+          "name": "docker-host.json",
+          "url": "packages/docker-host.json",
+          "size": 453,
+          "sha256": "534946f4f60ceb83024cc5f1a9a49bf07168b14f2c193f9233e672e408bc6fc6"
+        }
+      ]
+    },
+    {
+      "id": "nginx",
+      "name": "Nginx Webserver",
+      "version": "0.1.0",
+      "description": "Nginx aus den Paketquellen als Webserver-Basis. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "category": "Anwendungen",
+      "assets": [
+        {
+          "name": "nginx.json",
+          "url": "packages/nginx.json",
+          "size": 447,
+          "sha256": "9e6e8db856b1c3cfe5dda4eb13079c584d33052b753801efbe20d89abdafcc35"
+        }
+      ]
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "version": "0.1.0",
+      "description": "PostgreSQL aus den Paketquellen ohne externe Netzwerkfreigabe. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "category": "Datenbanken",
+      "assets": [
+        {
+          "name": "postgresql.json",
+          "url": "packages/postgresql.json",
+          "size": 452,
+          "sha256": "5d8bc8d065c90f1b011f4adb2740d85a90a79bb23800e802d82b46ff24413cd2"
+        }
+      ]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "version": "0.1.0",
+      "description": "Redis aus den Paketquellen mit distributionsseitiger Standardkonfiguration. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "category": "Datenbanken",
+      "assets": [
+        {
+          "name": "redis.json",
+          "url": "packages/redis.json",
+          "size": 444,
+          "sha256": "cb884e1bd6887c5b48d7355db950cf6d26d3a56652d5394ea02ec87683b7c14a"
+        }
+      ]
+    }
+  ]
+}

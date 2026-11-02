@@ -67,3 +67,7 @@ Die angehängten Kundenlogs enthalten 464 Zeilen, überwiegend Request-URLs ohne
 Neue Prüfungen: 9 Katalogtests (Offline-Nutzung, Hashfehler, Größen-/Origin-Prüfung, Parallelität, Cache-Reparatur) und 4 HTTP-Diagnosetests (Status/Fehler-ID, HEAD, Zugriffsschutz). Frontend-Prüfungen decken Ressourcenbaum und Escaping zentraler Katalogeinträge ab. Der komplette Lauf umfasst 106 Python-Tests.
 
 Offen: tatsächlicher Herausgeber-Katalog, automatische Proxmox-Bereitstellung zentraler Pakete, reale Proxmox-Fehler-Reproduktion und Browser-Layoutprüfung. Ein lokaler Paketcache allein ist kein abgeschlossener VM-Marketplace. Der Hintergrund-Sync wird bei Dienststart ausgelöst; laufende Gäste werden dadurch nicht aktualisiert.
+
+## Git-Updatehelfer und Registry-Seite
+
+Drei zusätzliche Prüfungen mit echten lokalen Git-Repositories: lokale CA-Einbindung und `.env` bleiben erhalten; Compose-Konflikte und weitere lokale Quellcodeänderungen brechen ohne Überschreiben ab. Der innere Docker-Update-Aufruf ist dabei ein Stub. Die sechs Rezeptdateien des Registry-Katalogs wurden auf Schema, Größe und SHA-256 geprüft. Die Rezepte selbst sind noch nicht auf Gastmaschinen abgenommen.
