@@ -76,3 +76,5 @@ Drei zusätzliche Prüfungen mit echten lokalen Git-Repositories: lokale CA-Einb
 ## Design 0.7.1
 
 Die separate Ressourcenbaum-Spalte und Icon-Schiene wurden entfernt. Prism-Referenz: offizielle Nutanix-Darstellungen unter https://careers.nutanix.com/en/employee-stories/whitepaper/prism-tasks-a-ux-odyssey/ . Eigene Implementierung und Orbit-Marke, keine übernommenen Produktbilder oder Nutanix-Logos. Alte Themenüberschreibungen wurden entfernt; eine gemeinsame Gestaltung für Navigation, Tabellen, Marketplace, Objektdetails, Formulare und Dialoge ersetzt sie.
+
+Die veröffentlichte, ausschließlich simulierte Demo wurde im Cloud-Browser auf dem Desktop angesehen: Dashboard, VM-Tabelle und geöffneter Marketplace-Konfigurator. Navigation und VM-Inventar wurden bedient, ohne eine Bereitstellung abzusenden. In diesen Ansichten keine Überlappungen festgestellt. Mobile Ansichten und die echte Kundeninstanz wurden nicht visuell abgenommen.
