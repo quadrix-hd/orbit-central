@@ -30,10 +30,11 @@ func (p *Problem) Error() string               { return p.Message }
 func problem(message string, status int) error { return &Problem{Message: message, Status: status} }
 
 type Proxmox struct {
-	Store     *Store
-	Client    *http.Client
-	mu        sync.Mutex
-	preferred map[string]string
+	Store          *Store
+	Client         *http.Client
+	mu             sync.Mutex
+	preferred      map[string]string
+	networkChanges map[string]string
 }
 
 func NewProxmox(s *Store, caFile string) (*Proxmox, error) {
@@ -205,6 +206,18 @@ func (p *Proxmox) once(ctx context.Context, c Connection, endpoint, method, path
 	if err = json.NewDecoder(bytes.NewReader(raw)).Decode(&envelope); err != nil {
 		return nil, &Problem{"Unerwartete Proxmox-Antwort.", 502, true}
 	}
+	if method == "GET" && strings.HasSuffix(path, "/network") {
+		var changes string
+		if raw, ok := envelope["changes"]; ok {
+			_ = json.Unmarshal(raw, &changes)
+		}
+		p.mu.Lock()
+		if p.networkChanges == nil {
+			p.networkChanges = map[string]string{}
+		}
+		p.networkChanges[c.ID+"|"+path] = changes
+		p.mu.Unlock()
+	}
 	data, exists := envelope["data"]
 	if !exists {
 		return nil, &Problem{"Unerwartete Proxmox-Antwort.", 502, true}
@@ -264,4 +277,10 @@ func (p *Proxmox) VerifyEndpoints(ctx context.Context, c Connection) error {
 		expected = identity
 	}
 	return nil
+}
+
+func (p *Proxmox) NetworkChanges(c Connection, path string) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.networkChanges[c.ID+"|"+path]
 }

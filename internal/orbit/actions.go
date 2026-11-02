@@ -341,6 +341,9 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 		return old, 200
 	}
 	action := field(d, "action", 20, "")
+	if action == "infrastructure" {
+		return s.submitInfra(ctx, d, key)
+	}
 	if action == "registry_deploy" {
 		return s.submitRegistry(ctx, d, key)
 	}
@@ -580,6 +583,10 @@ func (s *Server) hardwareArgs(ctx context.Context, c Connection, vm, d doc, acti
 }
 
 func (s *Server) processOperation(ctx context.Context, op doc) {
+	if op["action"] == "infrastructure" {
+		s.processInfra(ctx, op)
+		return
+	}
 	if op["action"] == "registry_deploy" {
 		s.processRegistry(ctx, op)
 		return

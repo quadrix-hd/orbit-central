@@ -10,7 +10,7 @@ import (
 func TestPreviewVersionsAssetsAndKeepsRelativeDemoURLs(t *testing.T) {
 	t.Chdir(t.TempDir())
 	_ = os.MkdirAll("dist", 0700)
-	for _, name := range []string{"app.css", "app.js", "vm-workspace.js", "bootstrap.js", "orbit-sans-regular.woff", "orbit-sans-bold.woff"} {
+	for _, name := range []string{"app.css", "app.js", "vm-workspace.js", "infrastructure.js", "live.js", "bootstrap.js", "orbit-sans-regular.woff", "orbit-sans-bold.woff"} {
 		_ = os.WriteFile(filepath.Join("dist", name), []byte(name), 0600)
 	}
 	_ = os.WriteFile("dist/index.html", []byte(`<meta name="orbit-mode" content="demo"><link href="/app.css?v=old"><script src="/app.js"></script>`), 0600)

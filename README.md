@@ -1,4 +1,4 @@
-# Orbit Central · Go 0.10.0
+# Orbit Central · Go 0.11.0
 
 Lokales Dashboard für Proxmox VE und optional Proxmox Backup Server.
 Der Server, die Proxmox-Anbindung, Aufgabenverarbeitung, Konsole, Registry und
@@ -169,7 +169,8 @@ go test ./...
 go vet ./...
 CGO_ENABLED=0 go build -o orbit-go ./cmd/orbit
 ORBIT_DATA_DIR=./data-go-preview ORBIT_PUBLIC_ORIGIN=http://localhost:8080 ./orbit-go
-node tests/test_frontend.cjs
+npm ci
+npm test
 go run ./cmd/orbit export-preview
 ```
 
@@ -197,3 +198,51 @@ orbit` aktiv. CA-Mount, öffentliche Adresse und Ports bleiben ausdrücklich
 Deployment-Konfiguration in `.env`/`compose.yaml`; die UI zeigt deren Status.
 Verbindungen mit offenen Aufgaben oder verknüpften Blueprints lassen sich
 nicht entfernen. Beim Passwortwechsel werden andere Sitzungen verworfen.
+
+## Live-Anzeige ab 0.11
+
+Der Browser erhält authentifizierte Server-Sent Events über `/api/events`.
+Orbit fragt die Proxmox-API ungefähr alle zwei Sekunden ab; deren eigene
+Messwertrate, Antwortzeit und Netzwerklatenz begrenzen die Aktualität. Es ist
+kein verzögerungsfreier Proxmox-Push. Inventar und Aufgaben werden laufend
+übertragen; ausgewählte Module und VM-Details werden zusätzlich aktualisiert.
+Netzwerk-/Firewall-Konfigurationsdaten werden im geöffneten Editorbereich etwa
+alle vier Sekunden neu gelesen, solange kein Bestätigungsdialog offen ist.
+
+Änderungen werden im bestehenden Dokument eingepflegt. Eingaben, Fokus und
+Konsolen-DOM bleiben erhalten. Fehler markieren fehlende Verbindungen;
+Sitzungsablauf schließt den Stream. Er verbindet sich automatisch neu. Bei
+Verbindungsproblemen greift das eingestellte Fallback-Intervall. "Aus"
+deaktiviert nur diesen Fallback, nicht den Live-Stream.
+
+Reverse-Proxys müssen `/api/events` ungepuffert weiterreichen; Orbit setzt
+`X-Accel-Buffering: no` und sendet alle zehn Sekunden Heartbeats. Ein sinnvoller
+Proxy-Lese-Timeout liegt oberhalb dieses Intervalls. Es werden keine dauerhaften
+Proxmox-Token an den Browser geschickt.
+
+## Netzwerk und Firewall ab 0.11
+
+Unter Netzwerk: Linux-Bridges, Bonds und VLANs anlegen/bearbeiten/entfernen,
+physische Interfaces bearbeiten, IPv4/IPv6, Gateways, MTU, Autostart, Bridge-Ports,
+VLAN-Fähigkeit, VLAN-Basisinterface und Bond-Modus einstellen. Speichern merkt
+Änderungen auf Proxmox vor. Die API-Differenz wird angezeigt. Anwenden und
+Verwerfen sind ausdrücklich bestätigte, separate Aktionen. Anwenden benötigt
+ifupdown2 und kann den Managementzugriff beeinflussen. Physische Ports werden
+hier nicht gelöscht; OVS-/SDN-Interfaces werden als lesend gekennzeichnet.
+
+Unter Firewall: Datacenter-, Host- und QEMU-/LXC-Bereich auswählen; Regeln
+anlegen, bearbeiten, löschen und umordnen; Aktivierung, Richtlinien und
+bereichsspezifische Optionen bearbeiten. Unbelegte Richtlinien bleiben
+standardmäßig geerbt. MAC-/NDP-Filter werden nicht beim bloßen Öffnen oder
+Speichern stillschweigend deaktiviert. Spezial-/Gruppenregeln werden als
+solche angezeigt und nicht in eine einfache Regel umgeschrieben.
+
+Schreibaufträge sind persistent und idempotent. Konfigurationsrevisionen werden
+beim Einplanen und unmittelbar vor dem Schreiben geprüft; Firewall-Änderungen
+verwenden zusätzlich Proxmox-Digests, wo die API diese unterstützt. Die Host-
+Netzwerk-API hat keine gleichwertige atomare Digest-Sperre: externe parallele
+Änderungen lassen sich nicht vollständig ausschließen. Unklare Übermittlungen
+werden nicht automatisch wiederholt. Bestehende Bestätigungsdialoge bleiben
+an den ursprünglich gewählten Cluster und Node gebunden.
+
+Coterm-Einordnung und vollständige offene Bereiche: [FEATURE_MATRIX.md](FEATURE_MATRIX.md).

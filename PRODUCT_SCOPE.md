@@ -13,3 +13,8 @@ Cluster-/Host-Verfügbarkeit: HIGH_AVAILABILITY.md.
 Noch nicht implementiert: LXC-Erstellung und -Terminal, komplette Host-/Netzwerk-/
 Firewall-/Storage-Editoren, Host-Upgrades, mehrere Orbit-Benutzer mit Rollen,
 SSO und eine vollständig automatische Hochverfügbarkeit des Orbit-Dockerhosts.
+
+Ab 0.11: Live-Streams und direkte Linux-Netzwerk-/Firewall-Regelbearbeitung
+sind implementiert. Die weiterhin offenen Teilbereiche sind präzisiert in
+FEATURE_MATRIX.md; die ältere allgemeine Einstufung als rein lesende Module
+gilt für diese implementierten Teilbereiche nicht mehr.

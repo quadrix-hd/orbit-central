@@ -10,11 +10,15 @@ import (
 )
 
 func (s *Server) module(w http.ResponseWriter, r *http.Request, c Connection, section string) error {
+	data, err := s.moduleData(r, c, section)
+	return jsonData(w, data, err)
+}
+func (s *Server) moduleData(r *http.Request, c Connection, section string) (any, error) {
 	if c.Kind == "pbs" {
 		if section != "protection" {
-			return problem("Dieses Modul benötigt Proxmox VE.", 400)
+			return nil, problem("Dieses Modul benötigt Proxmox VE.", 400)
 		}
-		return jsonData(w, map[string]any{"datastores": s.safeRead(r, c, "/status/datastore-usage", nil), "pbs_tasks": s.safeRead(r, c, "/nodes/localhost/tasks", url.Values{"limit": {"30"}})}, nil)
+		return map[string]any{"datastores": s.safeRead(r, c, "/status/datastore-usage", nil), "pbs_tasks": s.safeRead(r, c, "/nodes/localhost/tasks", url.Values{"limit": {"30"}})}, nil
 	}
 	sections := map[string]map[string]string{
 		"protection": {"backup_jobs": "/cluster/backup", "replication": "/cluster/replication", "ha": "/cluster/ha/status/current"},
@@ -36,12 +40,12 @@ func (s *Server) module(w http.ResponseWriter, r *http.Request, c Connection, se
 			}
 			result[key] = value
 		}
-		return jsonData(w, result, nil)
+		return result, nil
 	}
 	if section == "network" || section == "lifecycle" {
 		data, err := s.PVE.Call(r.Context(), c, "GET", "/nodes", nil)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		result := []map[string]any{}
 		for _, node := range objects(data) {
@@ -59,22 +63,26 @@ func (s *Server) module(w http.ResponseWriter, r *http.Request, c Connection, se
 			}
 			result = append(result, entry)
 		}
-		return jsonData(w, map[string]any{"nodes": result}, nil)
+		return map[string]any{"nodes": result}, nil
 	}
-	return problem("Unbekanntes Modul.", 404)
+	return nil, problem("Unbekanntes Modul.", 404)
 }
 
 var diskPattern = regexp.MustCompile(`^(scsi|virtio|sata|ide)\d+$`)
 var sizePattern = regexp.MustCompile(`(?:^|,)size=([^,]+)`)
 var networkPattern = regexp.MustCompile(`^net\d+$`)
 
-func (s *Server) vmDetail(w http.ResponseWriter, r *http.Request, c Connection, vmid int) error {
+func (s *Server) vmDetail(w http.ResponseWriter, r *http.Request, c Connection, id int) error {
+	data, err := s.vmDetailData(r, c, id)
+	return jsonData(w, data, err)
+}
+func (s *Server) vmDetailData(r *http.Request, c Connection, vmid int) (doc, error) {
 	if c.Kind != "pve" {
-		return problem("VM-Verwaltung benötigt Proxmox VE.", 400)
+		return nil, problem("VM-Verwaltung benötigt Proxmox VE.", 400)
 	}
 	data, err := s.PVE.Call(r.Context(), c, "GET", "/cluster/resources", url.Values{"type": {"vm"}})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var vm map[string]any
 	for _, row := range objects(data) {
@@ -84,20 +92,20 @@ func (s *Server) vmDetail(w http.ResponseWriter, r *http.Request, c Connection, 
 		}
 	}
 	if vm == nil {
-		return problem("VM oder Container nicht gefunden.", 404)
+		return nil, problem("VM oder Container nicht gefunden.", 404)
 	}
 	node, _ := vm["node"].(string)
 	if requested := r.URL.Query().Get("node"); requested != "" && requested != node {
-		return problem("Die VM befindet sich inzwischen auf einem anderen Node. Inventar aktualisieren.", 409)
+		return nil, problem("Die VM befindet sich inzwischen auf einem anderen Node. Inventar aktualisieren.", 409)
 	}
 	base := "/nodes/" + url.PathEscape(node) + "/" + fmt.Sprint(vm["type"]) + "/" + fmt.Sprint(vmid)
 	data, err = s.PVE.Call(r.Context(), c, "GET", base+"/config", nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	config, ok := data.(map[string]any)
 	if !ok {
-		return problem("Ungültige VM-Konfiguration.", 502)
+		return nil, problem("Ungültige VM-Konfiguration.", 502)
 	}
 	clean := map[string]any{}
 	for _, key := range []string{"name", "cores", "sockets", "memory", "ostype", "agent", "onboot", "tags", "description", "template", "lock", "boot"} {
@@ -149,5 +157,5 @@ func (s *Server) vmDetail(w http.ResponseWriter, r *http.Request, c Connection, 
 			networks = append(networks, map[string]any{"device": key, "bridge": parts["bridge"], "vlan": vlan, "firewall": fw, "mac": mac})
 		}
 	}
-	return jsonData(w, map[string]any{"vm": vm, "config": clean, "disks": disks, "networks": networks, "snapshots": s.safeRead(r, c, base+"/snapshot", nil), "metrics": s.safeRead(r, c, base+"/rrddata", url.Values{"timeframe": {"hour"}, "cf": {"AVERAGE"}})}, nil)
+	return map[string]any{"vm": vm, "config": clean, "disks": disks, "networks": networks, "snapshots": s.safeRead(r, c, base+"/snapshot", nil), "metrics": s.safeRead(r, c, base+"/rrddata", url.Values{"timeframe": {"hour"}, "cf": {"AVERAGE"}})}, nil
 }

@@ -1,0 +1,6 @@
+{
+  "name": "orbit-ui-checks",
+  "private": true,
+  "scripts": {"test": "node tests/test_frontend.cjs && node tests/test_live_dom.cjs"},
+  "devDependencies": {"jsdom": "26.1.0"}
+}

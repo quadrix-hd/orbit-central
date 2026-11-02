@@ -15,7 +15,12 @@ jobs:
       - run: go test -race ./...
       - run: go vet ./...
       - run: CGO_ENABLED=0 go build -trimpath ./cmd/orbit
-      - run: node tests/test_frontend.cjs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
       - run: docker build -t orbit-go:test .
       - name: Runtime has Go, no Python, and console/ISO assets
         run: docker run --rm --entrypoint sh orbit-go:test -c '! command -v python3 && orbit version && command -v xorriso && test -f /opt/orbit-novnc/core/rfb.js'

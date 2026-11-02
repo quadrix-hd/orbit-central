@@ -1,0 +1,33 @@
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict'),{JSDOM}=require('jsdom');
+const dom=new JSDOM('<html><body><div id="app"></div><div id="toast"></div><dialog id="modal"></dialog></body></html>',{url:'https://orbit.example',runScripts:'outside-only'}),w=dom.window;
+w.setTimeout=()=>1;w.setInterval=()=>1;w.clearTimeout=()=>{};w.scrollTo=()=>{};w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};w.AbortSignal=AbortSignal;w.console=console;
+const ctx=dom.getInternalVMContext(),run=source=>vm.runInContext(source,ctx);
+for(const f of ['app.js','vm-workspace.js','infrastructure.js','live.js'])run(fs.readFileSync('dist/'+f,'utf8'));
+run("state.mode='demo';state.authenticated=true;loadDemo();state.page='settings';state.settingsTab='defaults';render()");
+const input=w.document.querySelector('[name="default_cpu"]');input.focus();input.value='17';const form=input.form;
+run("state.mode='live';renderLive()");
+assert.equal(w.document.querySelector('#app').id,'app');assert.equal(w.document.querySelector('[name="default_cpu"]'),input);assert.equal(w.document.activeElement,input);assert.equal(input.value,'17');assert.equal(w.document.querySelector('#defaults-form'),form);
+run("state.page='overview';render()");const before=w.document.querySelector('.stat-value').textContent;
+run("applyLiveSnapshot({at:Date.now()/1000,connections:state.connections,resources:[...state.resources,{type:'node',node:'added',status:'online',cpu:0,maxcpu:4,mem:0,maxmem:1073741824,connection_id:'demo'}],jobs:[],operations:[],errors:[]})");
+assert.notEqual(w.document.querySelector('.stat-value').textContent,before);assert.ok(w.document.querySelector('#app'));
+run("state.page='object';state.objectTab='console';state.consoleRFB={};state.object={vm:state.resources.find(v=>v.vmid===100),config:{},snapshots:{ok:true,data:[]}};render()");const consoleNode=w.document.querySelector('#console-screen');run("renderLive()");assert.equal(w.document.querySelector('#console-screen'),consoleNode);
+console.log('Live DOM: focused form, typed values, app root, live metrics and console node preserved.');
+
+run("state.page='network';state.infra.kind='network';state.infra.data={rows:[{iface:'vmbr0',type:'bridge',active:1}],revision:'demo'};render()");
+const selector=w.document.querySelector('[name="infra-node"]');
+run("state.resources.push({type:'node',node:'new-node',status:'online',connection_id:'demo'});renderLive()");
+assert.equal(w.document.querySelector('[name="infra-node"]'),selector);assert.ok([...selector.options].some(o=>o.value==='new-node'));
+console.log('Live DOM: selectors receive new nodes without replacing the active document.');
+run("state.mode='demo';loadDemo();state.infra.connection='demo';state.infra.node='pve-01';state.infra.scope='cluster';state.infra.data={revision:'demo',options:{},rules:[]};firewallOptionsEditor()");
+assert.equal(w.document.querySelector('[name="log_level_in"]'),null);assert.equal(w.document.querySelector('[name="policy_in"]').value,'');
+run("state.infra.scope='host';firewallOptionsEditor()");assert.equal(w.document.querySelector('[name="policy_in"]'),null);assert.equal(w.document.querySelector('[name="enable"]').checked,true);
+run("state.infra.scope='vm';firewallOptionsEditor()");assert.equal(w.document.querySelector('[name="macfilter"]').checked,true);assert.equal(w.document.querySelector('[name="ndp"]').checked,true);
+run("state.infra.scope='host';state.infra.data={revision:'demo',rows:[{iface:'vmbr0',type:'bridge',address:'192.0.2.10',netmask:'255.255.255.0'}]};networkEditor('vmbr0')");assert.equal(w.document.querySelector('[name="cidr"]').value,'192.0.2.10/24');
+run("closeModal(true);state.infra.scope='cluster';state.infra.data={revision:'demo',options:{},rules:[{pos:0,type:'group',action:'trusted',enable:1,digest:'abc'}]}");assert.ok(!run("infrastructurePage('firewall')").includes('data-firewall-edit="0"'));
+console.log('Infrastructure DOM: scope-specific options, inherited policies, MAC/NDP defaults and CIDR conversion passed.');
+(async()=>{
+run("state.mode='demo';loadDemo();state.infra.connection='demo';state.infra.node='pve-01';state.infra.scope='host';state.infra.data={revision:'demo',rows:[{iface:'vmbr0',type:'bridge',cidr:'192.0.2.10/24'}]};networkEditor('vmbr0')");
+const form2=w.document.querySelector('#network-editor');form2.elements.confirm_target.value='pve-01';form2.elements.acknowledge.checked=true;
+const bodies=[];w.fetch=async(url,opts)=>{bodies.push(JSON.parse(opts.body));if(bodies.length===1)throw new Error('connection lost');return{ok:true,json:async()=>({id:'op',action:'infrastructure',name:'pve-01',vmid:0,node:'pve-01',args:{target:'pve-01'},events:[],created:Date.now()/1000,status:'queued'})}};
+run("state.mode='live';state.connections=[{id:'different',kind:'pve',name:'Different cluster'}]");await form2.onsubmit({preventDefault(){},target:form2});await form2.onsubmit({preventDefault(){},target:form2});assert.equal(bodies[0].connection_id,'demo');assert.equal(bodies[1].connection_id,'demo');assert.equal(bodies[0].request_key,bodies[1].request_key);console.log('Infrastructure DOM: live context changes cannot retarget an open editor; retries retain the request key.');
+})().catch(e=>{console.error(e);process.exitCode=1});

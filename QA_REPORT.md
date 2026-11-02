@@ -89,3 +89,30 @@ Prüfung einschließlich Docker-Build und Runtime-Smoke-Test ist erfolgreich.
 Eine mobile Browser-Abnahme und die echte Kundeninstanz stehen weiterhin aus.
 
 Zusätzlich prüft ein weiterer Go-Test in 0.10 den statischen Export und den automatischen Wechsel der Asset-Version bei geänderten Styles. Insgesamt bestehen damit 88 Tests und Untertests; Race-Prüfung und Frontend-Prüfungen bestehen ebenfalls.
+
+## Live-Anzeige und Infrastruktur · 0.11.0
+
+Zusätzliche Go-Tests verwenden einen echten lokalen SSE-HTTP-Client: Anmeldung,
+Ursprungsschutz, Session-Widerruf, Stream-Abbruch und Freigabe des Clientlimits.
+Ein absichtlich auf 50 Millisekunden begrenzter normaler HTTP-Write-Timeout
+wird für den Stream korrekt überschrieben; mehrere Snapshots kommen weiter an.
+
+Netzwerk-/Firewalltests prüfen CRUD-Dispatch, explizite Netzwerkaktivierung,
+Konfigurationsrevisionen vor dem Schreiben, Digest-Übermittlung, Zielbestätigung,
+Adressvalidierung, gesperrtes Löschen physischer NICs sowie das Nichtwiederholen
+unklarer Übermittlungen. Bereichsspezifische Firewall-Optionen und das Bewahren
+geerbter Richtlinien werden zusätzlich geprüft.
+
+DOM-Tests mit jsdom prüfen erhaltene Eingaben/Fokus, den unveränderten App-Root
+und Konsolenknoten, aktualisierte Kennzahlen/Node-Selektoren, passende Firewall-
+Felder je Bereich und unveränderliche Editor-Ziele samt Request-Key bei einer
+zwischenzeitlich geänderten Clusterliste. jsdom und Node sind ausschließlich
+Entwicklungs-/Testwerkzeuge; die Runtime bleibt Go.
+
+Es wurden keine echten Host-Netzwerke oder Firewalls geändert. Die Proxmox-
+Schreibzugriffe werden simuliert. Die aktuelle Feature-Matrix bezeichnet offene
+OVS-/SDN-, IPSet-/Alias-/Security-Group- und weitere Editorbereiche ausdrücklich.
+Coterm wurde anhand seines offiziellen Quellcodes geprüft, nicht im Netzwerk
+des Nutzers getestet oder umkonfiguriert.
+
+Abschließender lokaler Lauf: 120 Go-Tests und Untertests einschließlich Race-Prüfung bestehen; Go-Vet, CGO-freier Build und beide Frontend-/DOM-Prüfungen sind erfolgreich.
