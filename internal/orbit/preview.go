@@ -20,7 +20,7 @@ func ExportPreview() error {
 					fail("Preview benötigt ausdrücklich Demomodus.")
 				}
 				for _, asset := range []string{"app.css", "app.js", "vm-workspace.js", "bootstrap.js"} {
-					text = strings.ReplaceAll(text, `"/`+asset+`"`, `"./`+asset+`"`)
+					text = strings.ReplaceAll(text, `"/`+asset, `"./`+asset)
 				}
 				raw = []byte(text)
 			}
