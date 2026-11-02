@@ -1,0 +1,9 @@
+.git
+.openai
+data
+backups
+tests
+__pycache__
+.env
+*.tar.gz
+*.zip
