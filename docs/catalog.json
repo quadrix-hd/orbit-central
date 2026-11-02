@@ -1,96 +1,178 @@
 {
   "schema": 1,
-  "revision": "2026-11-02.1",
+  "revision": "2026-11-02.go.1",
   "packages": [
     {
       "id": "ubuntu-server",
       "name": "Ubuntu Server",
-      "version": "0.1.0",
-      "description": "Grundkonfiguration mit QEMU Guest Agent. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "version": "0.9.0",
+      "description": "Grundkonfiguration mit QEMU Guest Agent. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
       "category": "Betriebssystem",
       "assets": [
         {
           "name": "ubuntu-server.json",
           "url": "packages/ubuntu-server.json",
-          "size": 438,
-          "sha256": "9c831b61449f6611197c2915812177208d7e548e44c9b067e6163d09d524a776"
+          "size": 734,
+          "sha256": "b3c48b0e88d90503ce7f6d9a807370a60f1d4da209120a5b8081a5e169afacef"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
         }
-      ]
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent"
+        ]
+      }
     },
     {
       "id": "debian-server",
       "name": "Debian Server",
-      "version": "0.1.0",
-      "description": "Schlanke Server-Grundkonfiguration mit Guest Agent. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "version": "0.9.0",
+      "description": "Schlanke Server-Grundkonfiguration mit Guest Agent. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
       "category": "Betriebssystem",
       "assets": [
         {
           "name": "debian-server.json",
           "url": "packages/debian-server.json",
-          "size": 435,
-          "sha256": "81083f89cc50220c2b331788ce448174c128dc6970e0e5731cdd864c75ff2cd0"
+          "size": 741,
+          "sha256": "7e71ee4f2df685fb646542924a94fff1fbdf86288a09f7de75937e1915513834"
+        },
+        {
+          "name": "debian-13-cloud.qcow2",
+          "url": "https://saimei.ftp.acc.umu.se/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2",
+          "size": 341114880,
+          "sha256": "dd7f5e92d879a983d757fc6acd8c5df0294abd9ba57137b29f8c863bb74a6904"
         }
-      ]
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "dd7f5e92d879a983d757fc6acd8c5df0294abd9ba57137b29f8c863bb74a6904",
+        "packages": [
+          "qemu-guest-agent"
+        ]
+      }
     },
     {
       "id": "docker-host",
       "name": "Docker Host",
-      "version": "0.1.0",
-      "description": "Docker Engine aus den Ubuntu-Paketquellen. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "version": "0.9.0",
+      "description": "Docker Engine aus den Ubuntu-Paketquellen. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
       "category": "Container",
       "assets": [
         {
           "name": "docker-host.json",
           "url": "packages/docker-host.json",
-          "size": 453,
-          "sha256": "534946f4f60ceb83024cc5f1a9a49bf07168b14f2c193f9233e672e408bc6fc6"
+          "size": 749,
+          "sha256": "6c238a13553e7d4aac99ea5f6e68e7ca44540f6ad3c8e429cb8f9aca20ef3181"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
         }
-      ]
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ]
+      }
     },
     {
       "id": "nginx",
       "name": "Nginx Webserver",
-      "version": "0.1.0",
-      "description": "Nginx aus den Paketquellen als Webserver-Basis. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "version": "0.9.0",
+      "description": "Nginx aus den Paketquellen als Webserver-Basis. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
       "category": "Anwendungen",
       "assets": [
         {
           "name": "nginx.json",
           "url": "packages/nginx.json",
-          "size": 447,
-          "sha256": "9e6e8db856b1c3cfe5dda4eb13079c584d33052b753801efbe20d89abdafcc35"
+          "size": 743,
+          "sha256": "0d43f258b33e807b775f5d86633779e7b2800f4dcb794885a6b8f3256beb7a5b"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
         }
-      ]
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "nginx"
+        ]
+      }
     },
     {
       "id": "postgresql",
       "name": "PostgreSQL",
-      "version": "0.1.0",
-      "description": "PostgreSQL aus den Paketquellen ohne externe Netzwerkfreigabe. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "version": "0.9.0",
+      "description": "PostgreSQL aus den Paketquellen ohne externe Netzwerkfreigabe. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
       "category": "Datenbanken",
       "assets": [
         {
           "name": "postgresql.json",
           "url": "packages/postgresql.json",
-          "size": 452,
-          "sha256": "5d8bc8d065c90f1b011f4adb2740d85a90a79bb23800e802d82b46ff24413cd2"
+          "size": 748,
+          "sha256": "5947989f52cd8b1b5e0323af237e5008f50bf382ff1a4c3f84a971bf73338e56"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
         }
-      ]
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "postgresql"
+        ]
+      }
     },
     {
       "id": "redis",
       "name": "Redis",
-      "version": "0.1.0",
-      "description": "Redis aus den Paketquellen mit distributionsseitiger Standardkonfiguration. Bereitstellungsrezept; automatischer VM-Import noch nicht verfügbar.",
+      "version": "0.9.0",
+      "description": "Redis aus den Paketquellen mit distributionsseitiger Standardkonfiguration. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
       "category": "Datenbanken",
       "assets": [
         {
           "name": "redis.json",
           "url": "packages/redis.json",
-          "size": 444,
-          "sha256": "cb884e1bd6887c5b48d7355db950cf6d26d3a56652d5394ea02ec87683b7c14a"
+          "size": 740,
+          "sha256": "54224b5df222ea55cd78df118a3fd841f54473c7e894139d24c913adf36084eb"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
         }
-      ]
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "redis-server"
+        ]
+      }
     }
   ]
 }

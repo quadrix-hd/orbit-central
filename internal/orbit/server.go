@@ -1,6 +1,7 @@
 package orbit
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
@@ -23,7 +24,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.8.0-go-alpha.1"
+const Version = "0.9.0"
 
 type Server struct {
 	Store          *Store
@@ -31,10 +32,14 @@ type Server struct {
 	Origin, Static string
 	mu             sync.Mutex
 	attempts       map[string][]time.Time
+	Catalog        *Catalog
+	Console        *Console
+	ctx            context.Context
+	workers        sync.WaitGroup
 }
 
 func NewServer(s *Store, p *Proxmox, origin, static string) *Server {
-	return &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}}
+	return &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}, Catalog: NewCatalog(s.Dir, os.Getenv("ORBIT_CATALOG_URL"), os.Getenv("ORBIT_CATALOG_MODE")), Console: newConsole(), ctx: context.Background()}
 }
 
 type session struct{ ID, CSRF string }
@@ -188,6 +193,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		if method != "GET" {
 			return problem("Nicht erlaubt.", 405)
 		}
+		if strings.HasPrefix(path, "/vendor/novnc/") {
+			return s.novnc(w, r)
+		}
 		return s.static(w, r)
 	}
 	if method != "GET" && method != "POST" && method != "DELETE" {
@@ -209,7 +217,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		if err = s.Store.DB.PingContext(r.Context()); err != nil {
 			return err
 		}
-		writeJSON(w, 200, map[string]any{"ok": true, "version": Version, "mode": "live", "runtime": "go", "experimental": true})
+		writeJSON(w, 200, map[string]any{"ok": true, "version": Version, "mode": "live", "runtime": "go"})
 		return nil
 	}
 	if path == "/api/auth" && method == "GET" {
@@ -221,7 +229,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		if session != nil {
 			csrf = session.CSRF
 		}
-		writeJSON(w, 200, map[string]any{"configured": s.Store.Configured(), "authenticated": session != nil, "csrf": csrf, "version": Version, "runtime": "go", "experimental": true})
+		writeJSON(w, 200, map[string]any{"configured": s.Store.Configured(), "authenticated": session != nil, "csrf": csrf, "version": Version, "runtime": "go"})
 		return nil
 	}
 	if path == "/api/setup" && method == "POST" {
@@ -317,9 +325,8 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		writeJSON(w, 200, map[string]bool{"ok": true})
 		return nil
 	}
-	if path == "/api/capabilities" && method == "GET" {
-		writeJSON(w, 200, map[string]any{"runtime": "go", "stage": "alpha", "supported": []string{"auth", "connections", "inventory", "monitoring", "vm_detail"}, "pending": []string{"operations", "jobs", "console", "registry_deploy", "catalog_cache", "backup_restore"}})
-		return nil
+	if handled, err := s.extraRoutes(w, r, data, session); handled || err != nil {
+		return err
 	}
 	if path == "/api/audit" && method == "GET" {
 		rows, err := s.Store.DB.Query("SELECT id,at,action,details FROM audit ORDER BY id DESC LIMIT 200")
@@ -382,13 +389,6 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		}
 		writeJSON(w, 200, docs)
 		return nil
-	}
-	if path == "/api/catalog" && method == "GET" {
-		writeJSON(w, 200, map[string]any{"configured": false, "packages": []any{}, "error": "Marketplace wird auf Go portiert und ist in dieser Testversion deaktiviert.", "mode": "web", "busy": false})
-		return nil
-	}
-	if mutating || strings.HasPrefix(path, "/api/consoles") {
-		return problem("Diese Funktion ist in der Go-Testversion noch nicht portiert. Bitte die stabile Version verwenden.", 501)
 	}
 	return problem("Nicht gefunden.", 404)
 }
@@ -535,8 +535,6 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) error {
 	}
 	if name == "index.html" {
 		html := strings.ReplaceAll(string(raw), `name="orbit-mode" content="demo"`, `name="orbit-mode" content="live"`)
-		html = strings.Replace(html, "</head>", `<style>.go-preview-notice{position:fixed;bottom:0;left:0;right:0;z-index:1000;padding:10px 20px;background:#fff0cc;color:#47350d;border-top:1px solid #d5a53c;font:13px Arial}body{padding-bottom:42px}</style></head>`, 1)
-		html = strings.Replace(html, "</body>", `<aside class="go-preview-notice" role="status">Go-Testversion · Monitoring verfügbar. VM-Aktionen, Konsole und Marketplace-Installation sind noch deaktiviert.</aside></body>`, 1)
 		raw = []byte(html)
 	}
 	w.Header().Set("Content-Type", mime)

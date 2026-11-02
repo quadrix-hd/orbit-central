@@ -3,6 +3,7 @@ module github.com/quadrix-hd/orbit-central
 go 1.25.0
 
 require (
+	github.com/gorilla/websocket v1.5.3
 	golang.org/x/crypto v0.45.0
 	modernc.org/sqlite v1.40.1
 )

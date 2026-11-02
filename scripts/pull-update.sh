@@ -6,7 +6,7 @@ cd "$project_dir"
 [[ -f compose.yaml && -f scripts/update.sh ]] || { echo 'Kein Orbit-Projekt gefunden.' >&2; exit 1; }
 command -v git >/dev/null || { echo 'Git fehlt.' >&2; exit 1; }
 [[ $(git branch --show-current) == main ]] || { echo 'Update erwartet Branch main.' >&2; exit 1; }
-if ! git diff --quiet HEAD -- . ':(exclude)compose.yaml'; then
+if ! git diff --quiet HEAD -- . ':(exclude)compose.yaml' ':(exclude)compose.go.yaml'; then
   echo 'Weitere lokale Quellcodeänderungen gefunden. Update abgebrochen; bitte Änderungen zuerst prüfen.' >&2; exit 1
 fi
 git fetch origin main
@@ -17,6 +17,7 @@ backup_dir="backups/config-$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p "$backup_dir"
 chmod 700 "$backup_dir"
 cp -p compose.yaml "$backup_dir/compose.yaml"
+if [[ -f compose.go.yaml ]]; then cp -p compose.go.yaml "$backup_dir/compose.go.yaml"; fi
 if [[ -f .env ]]; then cp -p .env "$backup_dir/.env"; chmod 600 "$backup_dir/.env"; fi
 stage_dir=$(mktemp -d "$backup_dir/.merge-XXXXXX")
 trap 'rm -rf "$stage_dir"' EXIT
@@ -27,6 +28,8 @@ if ! git merge-file -p "$backup_dir/compose.yaml" "$stage_dir/base.yaml" "$stage
 fi
 # Backed-up local Compose is restored if fast-forward cannot complete.
 git restore --source=HEAD --staged --worktree -- compose.yaml
+# Preserve the former preview configuration for stopping it after migration.
+# The preview definition is unchanged by the Go cutover commit.
 if ! git merge --ff-only origin/main; then
   cp -p "$backup_dir/compose.yaml" compose.yaml
   echo 'Quellcode-Update fehlgeschlagen; lokale Compose-Datei wiederhergestellt.' >&2; exit 1

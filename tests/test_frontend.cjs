@@ -10,7 +10,7 @@ for(const page of ['overview','clusters','vms','market','jobs','settings']){run(
 assert.ok(run("statusTag('offline')").includes('fail'));assert.ok(run("statusTag('unknown')").includes('neutral'));
 assert.equal(run('totals().nodes.length'),3);assert.equal(run('totals().vms.length'),6);
 run("state.query='postgres';state.category='Alle'");assert.equal((run('market()').match(/class="appcard"/g)||[]).length,1);
-run("state.query='';state.category='Container'");assert.equal((run('market()').match(/class="appcard"/g)||[]).length,2);
+run("state.query='';state.category='Container';state.marketTab='custom'");assert.equal((run('market()').match(/class="appcard"/g)||[]).length,2);
 assert.equal(run("esc('<script>')"),'&lt;script&gt;');
 run("state.blueprints=[{...demoApps[0],name:'<img src=x onerror=alert(1)>',description:'<script>x</script>'}];state.query='';state.category='Alle'");assert.ok(!run('market()').includes('<script>x'));
 run("state.blueprints=demoApps;configure('demo-0')");assert.ok(element('#modal').innerHTML.includes('Demo-Bereitstellung starten'));assert.ok(element('#modal').open);
@@ -25,7 +25,7 @@ run("state.scope='not-connected'");assert.equal(run('totals().nodes.length'),0);
 run("vmDetails('demo:100')");assert.equal(run('state.page'),'object');assert.ok(element('#app').innerHTML.includes('Virtuelle Hardware')===false);run("state.objectTab='hardware';render()");assert.ok(element('#app').innerHTML.includes('Laufwerk hinzufügen'));assert.ok(element('#app').innerHTML.includes('CPU / RAM ändern'));for(const tab of ['summary','hardware','network','snapshots','backup','console','options']){run(`state.objectTab='${tab}';render()`);assert.ok(!element('#app').innerHTML.includes('undefined'),tab)}
 run("vmAction(state.resources.find(v=>v.vmid===100),'snapshot')");assert.ok(element('#modal').innerHTML.includes('confirm_name'));
 for(const pattern of element('#modal').innerHTML.matchAll(/ pattern="([^"]+)"/g))assert.doesNotThrow(()=>new RegExp(pattern[1],'v'));
-run("state.connections=[];state.resources=[];state.blueprints=[];state.mode='live'");assert.ok(run('overview()').includes('Einrichtung starten'));assert.ok(run('market()').includes('Noch keine Pakete verfügbar'));assert.ok(!run('overview()').includes('NaN'));
+run("state.connections=[];state.resources=[];state.blueprints=[];state.catalog={configured:true,packages:[]};state.marketTab='central';state.mode='live'");assert.ok(run('overview()').includes('Einrichtung starten'));assert.ok(run('market()').includes('Noch keine Pakete verfügbar'));assert.ok(!run('overview()').includes('NaN'));
 for(const markup of [element('#modal').innerHTML,run("openBlueprintForm([{vmid:9000,name:'base',node:'pve-01'}],[{node:'pve-01',storages:['local'],bridges:['vmbr0']}],'demo');modal.innerHTML")]){
   const ids=[...markup.matchAll(/ id="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
   for(const label of markup.matchAll(/<label for="([^"]+)"/g))assert.ok(ids.includes(label[1]),'missing label target '+label[1]);

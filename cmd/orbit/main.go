@@ -47,8 +47,13 @@ func run() error {
 		return nil
 	}
 	if command != "serve" {
-		return fmt.Errorf("usage: orbit [serve|version|healthcheck]")
+		return orbit.CLI(os.Args[1:], env("ORBIT_DATA_DIR", "./data"))
 	}
+	unlock, err := orbit.LockData(env("ORBIT_DATA_DIR", "./data"))
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	store, err := orbit.OpenStore(env("ORBIT_DATA_DIR", "./data"))
 	if err != nil {
 		return err
@@ -62,9 +67,11 @@ func run() error {
 	server := &http.Server{Addr: ":" + env("PORT", "8080"), Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 90 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 32 * 1024}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	handler.RunWorkers(ctx)
+	defer func() { stop(); handler.WaitWorkers() }()
 	done := make(chan error, 1)
 	go func() { done <- server.ListenAndServe() }()
-	log.Printf("Orbit %s Go preview ready; unfinished write operations are disabled", orbit.Version)
+	log.Printf("Orbit %s Go ready", orbit.Version)
 	select {
 	case err := <-done:
 		if err == http.ErrServerClosed {

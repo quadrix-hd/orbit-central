@@ -1,50 +1,50 @@
 #!/usr/bin/env bash
-# Neue, geprüfte Quelldateien zuerst in dieses Verzeichnis übernehmen.
+# Python -> Go and Go -> Go, preserving the existing Compose volume and identity.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-if [[ -n "${ORBIT_IMAGE:-}" ]]; then echo 'ORBIT_IMAGE ist gesetzt. Image-Updates bitte explizit verwalten.' >&2; exit 1; fi
-configured_image=$(docker compose config --images)
-[[ "$configured_image" == 'orbit-console:local' ]] || { echo 'Update-Skript erwartet orbit-console:local. Für eigene Images den Updateweg explizit verwalten.' >&2; exit 1; }
+if [[ -n "${ORBIT_IMAGE:-}" ]]; then echo 'ORBIT_IMAGE ist gesetzt. Eigenes Image explizit verwalten.' >&2; exit 1; fi
+[[ $(docker compose config --images) == orbit-console:local ]] || { echo 'Update erwartet orbit-console:local.' >&2; exit 1; }
 mkdir -p backups
 chmod 700 backups
-container=$(docker compose ps -q orbit)
-[[ -n "$container" ]] || { echo 'Orbit läuft nicht. Für Erstinstallation scripts/install.sh verwenden.' >&2; exit 1; }
+container=$(docker compose ps -a -q orbit)
+[[ -n "$container" ]] || { echo 'Kein bestehender Orbit-Container. scripts/install.sh verwenden.' >&2; exit 1; }
 old_image=$(docker inspect --format '{{.Image}}' "$container")
 rollback_tag="orbit-console:rollback-$(date +%Y%m%d%H%M%S)"
 docker image tag "$old_image" "$rollback_tag"
-printf 'Neues Image bauen. Der bisherige Dienst bleibt währenddessen aktiv.\n'
+printf 'Go-Image bauen. Der bisherige Dienst bleibt währenddessen aktiv.\n'
 docker compose build orbit
-backup_name=''
-# Prevent requests during health checks and database rollback.
-docker compose exec -T orbit python -c 'from pathlib import Path;Path("/data/maintenance").touch(mode=0o600)'
+backup_path=''
 restore_old() {
   trap - ERR INT TERM
-  echo 'Update abgebrochen. Vorherige Version wird wiederhergestellt.' >&2
+  echo 'Update fehlgeschlagen. Vorherige Version wird wiederhergestellt.' >&2
   docker compose stop orbit || true
-  if [[ -n "$backup_name" ]]; then
-    # Retain post-update state separately for diagnosis, without replacing the snapshot.
-    docker compose run --rm -T --no-deps --entrypoint python orbit scripts/backup.py >&2 || true
-    # Use the current package's validation helper in the old image, even when
-    # upgrading from 0.3.0 (which did not contain restore.py).
-    ORBIT_IMAGE="$rollback_tag" docker compose run --rm -T --no-deps \
-      --volume "$PWD/scripts/restore.py:/tmp/orbit-restore.py:ro" \
-      --entrypoint python orbit /tmp/orbit-restore.py "$backup_path" --keep-maintenance || { echo 'Restore fehlgeschlagen. Wartungsmodus bleibt aktiv; Backup nicht löschen.' >&2; exit 1; }
+  if [[ -n "$backup_path" ]]; then
+    docker compose run --rm -T --no-deps --entrypoint orbit orbit restore "$backup_path" --keep-maintenance || { echo 'Restore fehlgeschlagen. Wartungsmodus bleibt aktiv; Backup behalten.' >&2; exit 1; }
   fi
+  # Remove maintenance using the new Go tool before retagging the old image.
+  docker compose run --rm -T --no-deps --entrypoint orbit orbit maintenance off || exit 1
   docker image tag "$rollback_tag" orbit-console:local
-  docker compose up -d --no-build --wait --wait-timeout 120 || { echo 'Vorherige Version konnte nicht starten. Wartungsmodus bleibt aktiv.' >&2; exit 1; }
-  docker compose exec -T orbit python -c 'from pathlib import Path;Path("/data/maintenance").unlink(missing_ok=True)'
-  echo "Vorherige Version wieder aktiv. Sicherung: ${backup_name:-nicht erstellt}" >&2
+  docker compose up -d --no-build --wait --wait-timeout 120 || { echo 'Vorherige Version konnte nicht starten.' >&2; exit 1; }
+  echo "Vorherige Version wieder aktiv. Sicherung: ${backup_path:-nicht erstellt}" >&2
   exit 1
 }
 trap restore_old ERR INT TERM
+# The new CLI also operates on the old Python database format. No Python helper
+# or Python runtime is required in the new image.
+docker compose run --rm -T --no-deps --entrypoint orbit orbit maintenance on
 docker compose stop orbit
-# Use the old image to snapshot the old schema before starting new code.
-backup_path=$(ORBIT_IMAGE="$rollback_tag" docker compose run --rm -T --no-deps --entrypoint python orbit scripts/backup.py)
+backup_path=$(docker compose run --rm -T --no-deps --entrypoint orbit orbit backup)
 backup_name=$(basename "$backup_path")
-ORBIT_IMAGE="$rollback_tag" docker compose run --rm -T --no-deps --entrypoint python orbit -c \
-  'import sys;from pathlib import Path;sys.stdout.buffer.write(Path(sys.argv[1]).read_bytes())' "$backup_path" > "backups/$backup_name"
+# Keep an additional host copy; the authoritative rollback copy remains in /data.
+docker compose cp "orbit:${backup_path}" "backups/$backup_name"
 chmod 600 "backups/$backup_name"
 docker compose up -d --no-build --wait --wait-timeout 120
-docker compose exec -T orbit python -c 'from pathlib import Path;Path("/data/maintenance").unlink(missing_ok=True)'
+docker compose exec -T orbit orbit maintenance off
 trap - ERR INT TERM
-printf 'Update erfolgreich. Sicherung: backups/%s\n' "$backup_name"
+# Remove the former preview container only. Its separate data volume is retained.
+preview_ids=$(docker ps -aq --filter label=com.docker.compose.project=orbit-go-preview --filter label=com.docker.compose.service=orbit-go)
+for preview_id in $preview_ids; do
+  docker stop "$preview_id"
+  docker rm "$preview_id"
+done
+printf 'Go-Umstellung erfolgreich. Bisherige Adresse, Daten und CA bleiben erhalten. Sicherung: backups/%s\n' "$backup_name"

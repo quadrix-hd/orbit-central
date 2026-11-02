@@ -142,19 +142,19 @@ func TestBodyValidationAndHead(t *testing.T) {
 		t.Fatal("static path traversal")
 	}
 }
-func TestUnportedWritesAreExplicitAndDoNotQueue(t *testing.T) {
+func TestMalformedWritesDoNotQueue(t *testing.T) {
 	s, store := testServer(t)
 	cookie, csrf := setup(t, s, store)
 	for _, path := range []string{"/api/operations", "/api/jobs", "/api/consoles", "/api/catalog/sync"} {
 		w := request(s, "POST", path, `{}`, cookie, csrf, s.Origin)
-		if w.Code != 501 || !strings.Contains(w.Body.String(), "noch nicht portiert") {
+		if w.Code != 400 {
 			t.Fatalf("%s: %d %s", path, w.Code, w.Body.String())
 		}
 	}
 	for _, table := range []string{"operations", "jobs"} {
 		var count int
 		if err := store.DB.QueryRow("SELECT count(*) FROM " + table).Scan(&count); err != nil || count != 0 {
-			t.Fatal("unported action queued")
+			t.Fatal("invalid action queued")
 		}
 	}
 }
@@ -245,13 +245,13 @@ func TestSecureSessionCookieAndExpiry(t *testing.T) {
 	}
 }
 
-func TestGoNoticeInServedUI(t *testing.T) {
+func TestLiveUIHasNoPreviewWarning(t *testing.T) {
 	s, _ := testServer(t)
 	if err := os.WriteFile(filepath.Join(s.Static, "index.html"), []byte(`<html><head><meta name="orbit-mode" content="demo"></head><body></body></html>`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	w := request(s, "GET", "/", "", nil, "", "")
-	if !strings.Contains(w.Body.String(), "Go-Testversion") || !strings.Contains(w.Body.String(), `content="live"`) {
-		t.Fatal("preview not labelled")
+	if strings.Contains(w.Body.String(), "Go-Testversion") || !strings.Contains(w.Body.String(), `content="live"`) {
+		t.Fatal("production UI not served")
 	}
 }

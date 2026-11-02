@@ -1,9 +1,5 @@
-name: Go migration checks
-on:
-  push:
-    paths: ['cmd/**', 'internal/**', 'go.mod', 'go.sum', 'Dockerfile.golang', '.github/workflows/go.yml']
-  pull_request:
-    paths: ['cmd/**', 'internal/**', 'go.mod', 'go.sum', 'Dockerfile.golang', '.github/workflows/go.yml']
+name: Orbit Go checks
+on: [push, pull_request]
 permissions:
   contents: read
 jobs:
@@ -15,7 +11,24 @@ jobs:
         with:
           go-version: '1.27.3'
           cache: true
-      - run: go test ./...
+      - run: sudo apt-get update && sudo apt-get install -y xorriso
+      - run: go test -race ./...
       - run: go vet ./...
       - run: CGO_ENABLED=0 go build -trimpath ./cmd/orbit
-      - run: docker build -f Dockerfile.golang -t orbit-go:test .
+      - run: node tests/test_frontend.cjs
+      - run: docker build -t orbit-go:test .
+      - name: Runtime has Go, no Python, and console/ISO assets
+        run: docker run --rm --entrypoint sh orbit-go:test -c '! command -v python3 && orbit version && command -v xorriso && test -f /opt/orbit-novnc/core/rfb.js'
+      - name: Container smoke test
+        run: |
+          docker run -d --name orbit-ci -p 127.0.0.1:18080:8080 orbit-go:test
+          for attempt in $(seq 1 30); do
+            if curl --fail http://127.0.0.1:18080/api/health; then break; fi
+            sleep 1
+          done
+          curl --fail http://127.0.0.1:18080/api/health | grep '"runtime":"go"'
+          docker exec orbit-ci orbit backup
+          docker exec orbit-ci orbit maintenance on
+          docker exec orbit-ci orbit maintenance off
+          docker stop orbit-ci
+          docker rm orbit-ci

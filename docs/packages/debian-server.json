@@ -2,15 +2,21 @@
   "schema": 1,
   "id": "debian-server",
   "name": "Debian Server",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "kind": "cloud-init-recipe",
   "base_os": "debian-13",
-  "status": "deployment-adapter-pending",
+  "status": "go-deployment",
   "cloud_init": {
     "package_update": true,
     "packages": [
       "qemu-guest-agent"
     ]
   },
-  "notes": "Rezeptdatei; kein VM-Abbild. Automatischer VM-Import in Orbit noch nicht implementiert. Nicht gegen einen realen Gast abgenommen."
+  "notes": "Go-Bereitstellung über Proxmox VE 9+. Basisimage und NoCloud-ISO über die Proxmox-API. Gast-Paketinstallation benötigt Internet; noch nicht gegen einen realen Gast abgenommen.",
+  "base_image": {
+    "name": "debian-13-cloud.qcow2",
+    "url": "https://saimei.ftp.acc.umu.se/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2",
+    "size": 341114880,
+    "sha256": "dd7f5e92d879a983d757fc6acd8c5df0294abd9ba57137b29f8c863bb74a6904"
+  }
 }
