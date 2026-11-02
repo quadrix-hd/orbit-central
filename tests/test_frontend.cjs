@@ -74,6 +74,6 @@ console.log('Frontend: failover textarea and separate LXC/HA workspace passed.')
 run("state.mode='live';state.catalog={configured:true,revision:'test',updated:1,packages:[{id:'pkg',name:'<script>unsafe</script>',description:'Local package',version:'1',category:'OS',assets:[]}]}");
 assert.ok(run('market()').includes('&lt;script&gt;unsafe&lt;/script&gt;'));
 assert.ok(!run('market()').includes('<script>unsafe</script>'));
-run("state.mode='demo';loadDemo()");assert.ok(run('resourceTree()').includes('data-vm="demo:100"'));
-assert.ok(run('shell()').includes('workspace-sidebar'));
-console.log('Frontend: central marketplace escaping and inventory explorer passed.');
+run("state.mode='demo';loadDemo()");assert.ok(run('vms()').includes('data-vm="demo:100"'));
+assert.ok(run('shell()').includes('prism-topbar'));assert.ok(!run('shell()').includes('resource-tree'));assert.ok(!run('shell()').includes('class="rail"'));
+console.log('Frontend: central marketplace escaping, VM links and single-navigation shell passed.');

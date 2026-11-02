@@ -1,4 +1,4 @@
-# Orbit Central · 0.7.0
+# Orbit Central · 0.7.1
 
 Lokale Verwaltungsoberfläche für Proxmox VE und Proxmox Backup Server. Die gehostete Website ist eine interaktive Demo. Der Docker-Dienst enthält API-Anbindung, SQLite, verschlüsselte Zugangsdaten und persistente Aufgaben.
 
@@ -252,3 +252,8 @@ Dabei wird nur Orbit für das Update kurz gestoppt und neu gestartet. Es werden 
 ## Zentrale Registry-Webseite
 
 Der Ordner `docs/` enthält die Registry-Seite, `catalog.json` und sechs lokale Cloud-init-Rezeptdateien mit Größen und SHA-256-Prüfsummen. GitHub Pages kann den Ordner von `main` veröffentlichen. Die Rezepte sind keine VM-Abbilder und wurden nicht gegen reale Gäste abgenommen. Automatisches VM-Provisioning daraus bleibt offen.
+
+
+## Design 0.7.1
+
+Prism-orientierte Oberfläche mit dunkler Produktleiste, einer einzigen beschrifteten Navigation und hellen Arbeitsflächen. Die zusätzliche Ressourcenbaum-Spalte aus 0.7.0 wurde entfernt. Alle Gäste bleiben über das VM-/Container-Inventar erreichbar. Der öffentliche Design-Demonstrator unter `docs/preview/` enthält ausschließlich Beispieldaten und verwendet keine echte Proxmox-Anbindung. Export: `python scripts/build-preview.py`.

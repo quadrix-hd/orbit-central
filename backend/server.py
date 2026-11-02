@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib import request, parse, error
 from cryptography.fernet import Fernet
 
-VERSION = '0.7.0'
+VERSION = '0.7.1'
 DATA = Path(os.environ.get('ORBIT_DATA_DIR', './data')).resolve()
 STATIC = Path(__file__).resolve().parents[1] / 'dist'
 DB_LOCK = threading.RLock()
