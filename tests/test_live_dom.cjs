@@ -23,6 +23,7 @@ assert.equal(w.document.querySelector('[name="log_level_in"]'),null);assert.equa
 run("state.infra.scope='host';firewallOptionsEditor()");assert.equal(w.document.querySelector('[name="policy_in"]'),null);assert.equal(w.document.querySelector('[name="enable"]').checked,true);
 run("state.infra.scope='vm';firewallOptionsEditor()");assert.equal(w.document.querySelector('[name="macfilter"]').checked,true);assert.equal(w.document.querySelector('[name="ndp"]').checked,true);
 run("state.infra.scope='host';state.infra.data={revision:'demo',rows:[{iface:'vmbr0',type:'bridge',address:'192.0.2.10',netmask:'255.255.255.0'}]};networkEditor('vmbr0')");assert.equal(w.document.querySelector('[name="cidr"]').value,'192.0.2.10/24');
+assert.equal(w.document.querySelector('[name="bond_mode"]').parentElement.style.display,'none');assert.equal(w.document.querySelector('[name="vlan_id"]').parentElement.style.display,'none');assert.equal(w.document.querySelector('[name="bridge_vids"]').parentElement.style.display,'');
 run("closeModal(true);state.infra.scope='cluster';state.infra.data={revision:'demo',options:{},rules:[{pos:0,type:'group',action:'trusted',enable:1,digest:'abc'}]}");assert.ok(!run("infrastructurePage('firewall')").includes('data-firewall-edit="0"'));
 console.log('Infrastructure DOM: scope-specific options, inherited policies, MAC/NDP defaults and CIDR conversion passed.');
 (async()=>{
