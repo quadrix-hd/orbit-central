@@ -1,5 +1,6 @@
 """Orbit: local Proxmox control plane. Python 3.12+, single process."""
 from __future__ import annotations
+import traceback
 import hashlib, hmac, http.cookies, json, logging, math, os, re, secrets, signal, sqlite3, ssl, threading, time, uuid
 from contextlib import contextmanager
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
@@ -7,7 +8,7 @@ from pathlib import Path
 from urllib import request, parse, error
 from cryptography.fernet import Fernet
 
-VERSION = '0.6.0'
+VERSION = '0.7.0'
 DATA = Path(os.environ.get('ORBIT_DATA_DIR', './data')).resolve()
 STATIC = Path(__file__).resolve().parents[1] / 'dist'
 DB_LOCK = threading.RLock()
@@ -21,9 +22,11 @@ RATE_LOCK = threading.Lock()
 ATTEMPTS = {}
 
 try:
+    from backend.catalog import Catalog
     from backend.control import ControlPlane
     from backend.console import ConsoleGateway
 except ModuleNotFoundError:
+    from catalog import Catalog
     from control import ControlPlane
     from console import ConsoleGateway
 
@@ -187,11 +190,26 @@ def pve_once(conn, method, path, fields=None):
         with request.build_opener(request.HTTPSHandler(context=ctx),NoRedirect()).open(req,timeout=8 if method=='GET' else 25) as r:
             return json.load(r)['data']
     except error.HTTPError as e:
-        e.close()
-        if e.code in (401,403): raise Problem('Proxmox verweigert den Zugriff. API-Token und Berechtigungen prüfen.',502)
-        raise Problem('Proxmox meldet HTTP '+str(e.code)+'. Aufgabe und Proxmox-Protokoll prüfen.',502,uncertain=e.code>=500)
-    except (error.URLError, TimeoutError, OSError):
-        raise Problem('Proxmox nicht erreichbar oder TLS-Zertifikat nicht vertrauenswürdig. Adresse und CA prüfen.',502,uncertain=True)
+        details=''
+        try:
+            payload=json.loads(e.read(65536));fields=payload.get('errors',{})
+            names=[k for k in fields if isinstance(k,str) and re.fullmatch(r'[a-zA-Z0-9_.-]{1,60}',k)] if isinstance(fields,dict) else []
+            if names:details=' Betroffene Felder: '+', '.join(sorted(names)[:12])+'.'
+            # Extract only privilege identifiers, never arbitrary upstream bodies.
+            required=sorted(set(re.findall(r'\b(?:VM|Sys|Datastore|SDN|Pool|Permissions|User|Group)\.[a-zA-Z]+\b',str(payload))))[:12]
+            if required:details+=' Benötigte Rechte: '+', '.join(required)+'.'
+        except (ValueError,TypeError,OSError):pass
+        finally:e.close()
+        logging.warning('upstream=proxmox method=%s path=%s status=%s%s',method,path,e.code,details)
+        if e.code in (401,403): raise Problem('Proxmox verweigert den Zugriff. API-Token und Berechtigungen prüfen.'+details,502)
+        raise Problem('Proxmox meldet HTTP '+str(e.code)+'. Aufgabe und Proxmox-Protokoll prüfen.'+details,502,uncertain=e.code>=500)
+    except (error.URLError, TimeoutError, OSError) as exc:
+        reason=getattr(exc,'reason',exc)
+        if isinstance(reason,ssl.SSLCertVerificationError):message='TLS-Zertifikat nicht vertrauenswürdig oder Hostname passt nicht. CA-Mount, ORBIT_CA_FILE und verwendeten Hostnamen prüfen.'
+        elif isinstance(reason,TimeoutError):message='Zeitüberschreitung beim Proxmox-Zugriff. Erreichbarkeit und Firewall prüfen.'
+        elif isinstance(reason,ConnectionRefusedError):message='Proxmox lehnt die Verbindung ab. HTTPS-Adresse, Port und Dienst prüfen.'
+        else:message='Proxmox nicht erreichbar oder TLS-Verbindung fehlgeschlagen. Adresse, DNS, Firewall und CA prüfen.'
+        raise Problem(message,502,uncertain=True)
     except (ValueError,KeyError,TypeError): raise Problem('Unerwartete Proxmox-Antwort.',502,uncertain=True)
 
 def pathpart(s): return parse.quote(str(s),safe='')
@@ -306,20 +324,28 @@ def blueprint_validate(d):
 
 CONTROL = ControlPlane(globals())
 CONSOLE = ConsoleGateway(globals())
+CATALOG = Catalog(DATA,os.environ.get('ORBIT_CATALOG_URL',''))
 
 class Handler(BaseHTTPRequestHandler):
     server_version='Orbit'
     def setup(self):
         super().setup();self.connection.settimeout(30)
-    def log_message(self,fmt,*args):
-        # Request paths can include identifiers; never log bodies or headers.
-        logging.info('%s %s',self.command,self.path.split('?')[0])
+    def handle_one_request(self):
+        self.request_id=uuid.uuid4().hex[:12];self.started=time.monotonic()
+        return super().handle_one_request()
+    def log_message(self,fmt,*args):pass
+    def log_request(self,code='-',size='-'):
+        path=re.sub(r'[^a-zA-Z0-9_./:-]','?',getattr(self,'path','').split('?')[0])[:300]
+        duration=int((time.monotonic()-getattr(self,'started',time.monotonic()))*1000)
+        logging.info('request_id=%s method=%s path=%s status=%s duration_ms=%s',getattr(self,'request_id','unknown'),'HEAD' if getattr(self,'head_only',False) else getattr(self,'command','unknown'),path,code,duration)
     def send_json(self,status,data,cookie=None):
+        if status>=400 and isinstance(data,dict):data={**data,'request_id':getattr(self,'request_id','unknown')}
         raw=json.dumps(data,ensure_ascii=False).encode()
         self.send_response(status);self.security_headers();self.send_header('Content-Type','application/json; charset=utf-8');self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-store')
         if cookie:self.send_header('Set-Cookie',cookie)
-        self.end_headers();self.wfile.write(raw)
+        self.end_headers();self.wfile.write(b'' if getattr(self,'head_only',False) else raw)
     def security_headers(self):
+        self.send_header('X-Request-ID',getattr(self,'request_id','unknown'))
         self.send_header('X-Content-Type-Options','nosniff');self.send_header('Referrer-Policy','no-referrer');self.send_header('X-Frame-Options','DENY')
         self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
     def read_body(self):
@@ -347,6 +373,10 @@ class Handler(BaseHTTPRequestHandler):
         with db() as c:c.execute('INSERT INTO sessions VALUES(?,?,?)',(hashlib.sha256(token.encode()).hexdigest(),csrf,time.time()+SESSIONS_TTL))
         cookie='orbit_session='+token+'; HttpOnly; SameSite=Strict; Path=/; Max-Age='+str(SESSIONS_TTL)+('; Secure' if COOKIE_SECURE else '')
         return csrf,cookie
+    def do_HEAD(self):
+        self.head_only=True;self.command='GET'
+        try:self.dispatch()
+        finally:self.head_only=False;self.command='HEAD'
     def do_GET(self): self.dispatch()
     def do_POST(self): self.dispatch()
     def do_DELETE(self): self.dispatch()
@@ -359,12 +389,12 @@ class Handler(BaseHTTPRequestHandler):
                     root=Path(os.environ.get('ORBIT_NOVNC_ROOT','/usr/share/novnc')).resolve()
                     file=(root/parse.unquote(path[len('/vendor/novnc/'):])).resolve()
                     if not file.is_relative_to(root) or not file.is_file() or file.suffix not in ('.js','.css','.png','.svg','.woff','.woff2'):raise Problem('Nicht gefunden.',404)
-                    raw=file.read_bytes();self.send_response(200);self.security_headers();self.send_header('Content-Type',{'.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.woff':'font/woff','.woff2':'font/woff2'}[file.suffix]);self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw);return
+                    raw=file.read_bytes();self.send_response(200);self.security_headers();self.send_header('Content-Type',{'.js':'text/javascript','.css':'text/css','.png':'image/png','.svg':'image/svg+xml','.woff':'font/woff','.woff2':'font/woff2'}[file.suffix]);self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(b'' if getattr(self,'head_only',False) else raw);return
                 file=STATIC / (path.lstrip('/') or 'index.html')
                 if file.name not in ('index.html','app.js','app.css','vm-workspace.js','bootstrap.js','orbit-sans-regular.woff','orbit-sans-bold.woff') or file.parent!=STATIC or not file.is_file():raise Problem('Nicht gefunden.',404)
                 raw=file.read_bytes()
                 if file.name=='index.html':raw=raw.replace(b'name="orbit-mode" content="demo"',b'name="orbit-mode" content="live"')
-                self.send_response(200);self.security_headers();self.send_header('Content-Type',{'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8','woff':'font/woff'}[file.suffix[1:]]);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-cache');self.end_headers();self.wfile.write(raw);return
+                self.send_response(200);self.security_headers();self.send_header('Content-Type',{'html':'text/html; charset=utf-8','js':'text/javascript; charset=utf-8','css':'text/css; charset=utf-8','woff':'font/woff'}[file.suffix[1:]]);self.send_header('Content-Length',str(len(raw)));self.send_header('Cache-Control','no-cache');self.end_headers();self.wfile.write(b'' if getattr(self,'head_only',False) else raw);return
             if self.command in ('POST','DELETE'):
                 origin=self.headers.get('Origin')
                 if origin and origin!=PUBLIC_ORIGIN:raise Problem('Fremder Ursprung nicht erlaubt.',403)
@@ -401,6 +431,22 @@ class Handler(BaseHTTPRequestHandler):
             if path=='/api/consoles' and self.command=='POST':
                 cid=text_field(data,'connection_id',r'[a-zA-Z0-9-]+',64);node=text_field(data,'node',r'[a-zA-Z0-9_.-]+',64);vmid=integer(data,'vmid',100,999999999)
                 return self.send_json(201,CONSOLE.create(cid,vmid,node,session))
+            if path=='/api/catalog' and self.command=='GET':return self.send_json(200,CATALOG.status())
+            if path=='/api/catalog/sync' and self.command=='POST':
+                if not CATALOG.url:raise Problem('Zentrale Katalogquelle ist noch nicht konfiguriert.')
+                CATALOG.start();return self.send_json(202,{'ok':True})
+            if path.startswith('/api/catalog/assets/') and self.command=='GET':
+                artifact=CATALOG.artifact(path.rsplit('/',1)[-1])
+                if not artifact:raise Problem('Lokale Paketdatei nicht verfügbar.',404)
+                file,name=artifact
+                self.send_response(200);self.security_headers();self.send_header('Content-Type','application/octet-stream');self.send_header('Content-Disposition','attachment; filename="'+name+'"');self.send_header('Content-Length',str(file.stat().st_size));self.end_headers()
+                if getattr(self,'head_only',False):return
+                with file.open('rb') as source:
+                    while True:
+                        chunk=source.read(1024*1024)
+                        if not chunk:break
+                        self.wfile.write(chunk)
+                return
             if CONTROL.route(self,path,data):return
             if path=='/api/logout' and self.command=='POST':
                 with db() as c:c.execute('DELETE FROM sessions WHERE id=?',(session['id'],))
@@ -519,15 +565,19 @@ class Handler(BaseHTTPRequestHandler):
                 with db() as c:rows=[dict(r) for r in c.execute('SELECT * FROM audit ORDER BY id DESC LIMIT 100')]
                 return self.send_json(200,rows)
             raise Problem('Nicht gefunden.',404)
-        except Problem as e:self.send_json(e.status,{'error':e.message})
+        except Problem as e:
+            logging.warning('request_id=%s error=%s',getattr(self,'request_id','unknown'),e.message)
+            self.send_json(e.status,{'error':e.message})
         except (BrokenPipeError,ConnectionResetError):pass
-        except Exception:
-            logging.error('Internal request failure (%s)',uuid.uuid4().hex[:8]);self.send_json(500,{'error':'Interner Fehler. Serverstatus prüfen.'})
+        except Exception as exc:
+            frames=','.join(Path(f.filename).name+':'+str(f.lineno)+':'+f.name for f in traceback.extract_tb(exc.__traceback__))
+            logging.error('request_id=%s internal_error=%s frames=%s',getattr(self,'request_id','unknown'),type(exc).__name__,frames);self.send_json(500,{'error':'Interner Fehler. Fehler-ID im Serverprotokoll prüfen.'})
 
 def main():
     logging.basicConfig(level=logging.INFO,format='%(asctime)s %(message)s');initialize()
     server=ThreadingHTTPServer((os.environ.get('ORBIT_BIND','0.0.0.0'),int(os.environ.get('PORT','8080'))),Handler)
     server.daemon_threads=True
+    if CATALOG.url:CATALOG.start()
     t=threading.Thread(target=worker,daemon=True);t.start()
     op_threads=[threading.Thread(target=CONTROL.worker,daemon=True) for _ in range(3)]
     for thread in op_threads:thread.start()

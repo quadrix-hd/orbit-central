@@ -25,7 +25,7 @@ run("state.scope='not-connected'");assert.equal(run('totals().nodes.length'),0);
 run("vmDetails('demo:100')");assert.equal(run('state.page'),'object');assert.ok(element('#app').innerHTML.includes('Virtuelle Hardware')===false);run("state.objectTab='hardware';render()");assert.ok(element('#app').innerHTML.includes('Laufwerk hinzufügen'));assert.ok(element('#app').innerHTML.includes('CPU / RAM ändern'));for(const tab of ['summary','hardware','network','snapshots','backup','console','options']){run(`state.objectTab='${tab}';render()`);assert.ok(!element('#app').innerHTML.includes('undefined'),tab)}
 run("vmAction(state.resources.find(v=>v.vmid===100),'snapshot')");assert.ok(element('#modal').innerHTML.includes('confirm_name'));
 for(const pattern of element('#modal').innerHTML.matchAll(/ pattern="([^"]+)"/g))assert.doesNotThrow(()=>new RegExp(pattern[1],'v'));
-run("state.connections=[];state.resources=[];state.blueprints=[];state.mode='live'");assert.ok(run('overview()').includes('Einrichtung starten'));assert.ok(run('market()').includes('Dein Katalog beginnt'));assert.ok(!run('overview()').includes('NaN'));
+run("state.connections=[];state.resources=[];state.blueprints=[];state.mode='live'");assert.ok(run('overview()').includes('Einrichtung starten'));assert.ok(run('market()').includes('Noch keine Pakete verfügbar'));assert.ok(!run('overview()').includes('NaN'));
 for(const markup of [element('#modal').innerHTML,run("openBlueprintForm([{vmid:9000,name:'base',node:'pve-01'}],[{node:'pve-01',storages:['local'],bridges:['vmbr0']}],'demo');modal.innerHTML")]){
   const ids=[...markup.matchAll(/ id="([^"]+)"/g)].map(m=>m[1]);assert.equal(new Set(ids).size,ids.length);
   for(const label of markup.matchAll(/<label for="([^"]+)"/g))assert.ok(ids.includes(label[1]),'missing label target '+label[1]);
@@ -61,7 +61,7 @@ console.log('Frontend: 12 views, filters, totals, HTML escaping, configurator an
   assert.equal(submitted.length,2);assert.equal(submitted[0].request_key,submitted[1].request_key);
   // Refresh requests issued during an earlier poll must not be silently discarded.
   let hits=0;context.fetch=async path=>{hits++;return {ok:true,status:200,json:async()=>[]}};
-  await Promise.all([run('refresh(false)'),run('refresh(false)')]);assert.equal(hits,10);
+  await Promise.all([run('refresh(false)'),run('refresh(false)')]);assert.equal(hits,12);
   console.log('Frontend: modal submission lock, 401 cleanup, stable retry keys and queued refreshes passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
 
@@ -70,3 +70,10 @@ assert.ok(run("field('Nodes','endpoints','https://node2:8006\\nhttps://node3:800
 assert.ok(run("containerView({vm:{type:'lxc',name:'ct-web',vmid:201,node:'pve-01',status:'stopped'},config:{cores:2,memory:2048},snapshots:{ok:true,data:[]}})").includes('data-core-action="ha"'));
 assert.ok(!run("containerView({vm:{type:'lxc',name:'ct-web',vmid:201,node:'pve-01',status:'stopped'},config:{},snapshots:{ok:true,data:[]}})").includes('data-hardware-action'));
 console.log('Frontend: failover textarea and separate LXC/HA workspace passed.');
+
+run("state.mode='live';state.catalog={configured:true,revision:'test',updated:1,packages:[{id:'pkg',name:'<script>unsafe</script>',description:'Local package',version:'1',category:'OS',assets:[]}]}");
+assert.ok(run('market()').includes('&lt;script&gt;unsafe&lt;/script&gt;'));
+assert.ok(!run('market()').includes('<script>unsafe</script>'));
+run("state.mode='demo';loadDemo()");assert.ok(run('resourceTree()').includes('data-vm="demo:100"'));
+assert.ok(run('shell()').includes('workspace-sidebar'));
+console.log('Frontend: central marketplace escaping and inventory explorer passed.');

@@ -11,6 +11,7 @@ services:
     environment:
       ORBIT_PUBLIC_ORIGIN: ${ORBIT_PUBLIC_ORIGIN:-http://localhost:8080}
       ORBIT_DATA_DIR: /data
+      ORBIT_CATALOG_URL: ${ORBIT_CATALOG_URL:-}
       ORBIT_CA_FILE: ${ORBIT_CA_FILE:-}
     volumes:
       - orbit-data:/data

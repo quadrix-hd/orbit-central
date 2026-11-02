@@ -58,3 +58,12 @@ Diese Abnahme steht aus. Die Tests liefern keine Garantie für störungsfreien B
 Hochverfügbarkeit des Orbit-Dienstes ist nicht als aktive/aktive Funktion implementiert. Der dokumentierte Weg ist eine vom vorhandenen Proxmox-HA-System neu gestartete VM; reale Ausfalltests stehen aus. Siehe HIGH_AVAILABILITY.md.
 
 - Noto Sans Regular/Bold werden als lokale WOFF-Dateien ausgeliefert; keine externe Font-Abhängigkeit. Lizenz liegt in FONT_LICENSE.txt.
+
+
+## 0.7.0 – neuer Arbeitsbereich, Diagnose und Katalogtransport
+
+Die angehängten Kundenlogs enthalten 464 Zeilen, überwiegend Request-URLs ohne Antwortstatus. Daraus konnten keine konkreten Fehlfunktionen bewiesen oder als behoben markiert werden. Es wurden keine Kunden-VMs angesprochen, gestartet, gestoppt oder neu gestartet. Der Browser-Zugriff auf die Kundeninstanz bleibt auf Wunsch aus.
+
+Neue Prüfungen: 9 Katalogtests (Offline-Nutzung, Hashfehler, Größen-/Origin-Prüfung, Parallelität, Cache-Reparatur) und 4 HTTP-Diagnosetests (Status/Fehler-ID, HEAD, Zugriffsschutz). Frontend-Prüfungen decken Ressourcenbaum und Escaping zentraler Katalogeinträge ab. Der komplette Lauf umfasst 106 Python-Tests.
+
+Offen: tatsächlicher Herausgeber-Katalog, automatische Proxmox-Bereitstellung zentraler Pakete, reale Proxmox-Fehler-Reproduktion und Browser-Layoutprüfung. Ein lokaler Paketcache allein ist kein abgeschlossener VM-Marketplace. Der Hintergrund-Sync wird bei Dienststart ausgelöst; laufende Gäste werden dadurch nicht aktualisiert.

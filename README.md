@@ -1,4 +1,4 @@
-# Orbit Central · 0.6.0
+# Orbit Central · 0.7.0
 
 Lokale Verwaltungsoberfläche für Proxmox VE und Proxmox Backup Server. Die gehostete Website ist eine interaktive Demo. Der Docker-Dienst enthält API-Anbindung, SQLite, verschlüsselte Zugangsdaten und persistente Aufgaben.
 
@@ -228,3 +228,10 @@ Weitere VE-Adressen lassen sich an einer bestehenden Verbindung speichern. Lesen
 ## Funktionsgrenzen
 
 Ein vollständiger Ersatz aller Proxmox-WebUI-Funktionen ist weiterhin nicht erreicht. Insbesondere fehlen LXC-Erstellung/Terminal/Mountpoints/Restore, Host-Shell, RBAC/SSO, vollständige schreibende Storage-/Netzwerk-/Firewall-/Ceph-Konfiguration, HA-Gruppen/-Regeln, Rolling Upgrades, ISO-Uploads sowie DR-Orchestrierung. HA-Zielzustände sind neu schreibend angebunden; die übrigen Cluster-Betriebsübersichten bleiben lesend.
+
+
+## Neu in 0.7.0
+
+Kompakter Arbeitsbereich mit Funktionsleiste und Cluster-/Node-/Gastbaum. Fehlerantworten enthalten eine Fehler-ID; Logs protokollieren Statuscode und Laufzeit ohne Request-Bodies, Tokens oder Query-Parameter. HEAD-Abfragen werden unterstützt. Proxmox-Fehler unterscheiden TLS-Probleme und Verbindungsfehler und nennen bei verfügbaren Validierungsantworten Feldnamen und erforderliche Privilegien, ohne rohe Antworten auszugeben.
+
+Der zentrale Marketplace hat einen lokalen, integritätsgeprüften Paketspiegel mit Start-/Update-Synchronisierung. Die tatsächliche Herausgeber-URL und das Bereitstellungsformat fehlen noch; automatische VM-Imports daraus sind noch nicht angeschlossen. [MARKETPLACE_SOURCE.md](MARKETPLACE_SOURCE.md) beschreibt den Transport und die Grenzen.
