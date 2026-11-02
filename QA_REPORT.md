@@ -87,3 +87,5 @@ und die Farbschemata sind sichtbar. Zwei beobachtete Kontrastfehler im
 Navigationskopf und beim dunklen Button-Hover wurden korrigiert. Die GitHub-
 Prüfung einschließlich Docker-Build und Runtime-Smoke-Test ist erfolgreich.
 Eine mobile Browser-Abnahme und die echte Kundeninstanz stehen weiterhin aus.
+
+Zusätzlich prüft ein weiterer Go-Test in 0.10 den statischen Export und den automatischen Wechsel der Asset-Version bei geänderten Styles. Insgesamt bestehen damit 88 Tests und Untertests; Race-Prüfung und Frontend-Prüfungen bestehen ebenfalls.
