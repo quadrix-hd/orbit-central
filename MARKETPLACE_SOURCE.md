@@ -1,15 +1,15 @@
 # Zentraler Marketplace: lokaler Spiegel
 
-Stand 0.7.0: Der lokale Download- und Aktualisierungsweg ist implementiert. Die Quelle des Herausgebers ist noch nicht bekannt. Die automatische Proxmox-Bereitstellung zentraler Pakete ist ausdrücklich noch nicht implementiert. Die bisherige lokale Cloud-init-Blueprint-Bereitstellung bleibt als erweiterte Funktion bestehen.
+Stand 0.7.0: Der lokale Download- und Aktualisierungsweg ist implementiert. Die Registry-Quelle ist https://quadrix-hd.github.io/orbit-central/catalog.json und enthält zunächst Cloud-init-Rezepte. Die automatische Proxmox-Bereitstellung zentraler Pakete ist ausdrücklich noch nicht implementiert. Die bisherige lokale Cloud-init-Blueprint-Bereitstellung bleibt als erweiterte Funktion bestehen.
 
 ## Herausgeber statt Endnutzer
 
-Der Herausgeber hostet eine HTTPS-JSON-Datei und die Paketdateien auf derselben Origin (Hostname und Port). Die Katalogadresse wird bei der Installation über `ORBIT_CATALOG_URL` vorgegeben. Endnutzer erstellen die Einträge nicht selbst. Solange die echte Adresse fehlt, ist kein produktiver zentraler Katalog voreingestellt. Keine externe Marketplace-Seite wird erfunden oder automatisch verwendet.
+Der Herausgeber hostet eine HTTPS-JSON-Datei und die Paketdateien auf derselben Origin (Hostname und Port). Die Katalogadresse wird bei der Installation über `ORBIT_CATALOG_URL` vorgegeben. Endnutzer erstellen die Einträge nicht selbst. Die Docker-Konfiguration verwendet diese Registry als Standard. Über ORBIT_CATALOG_URL kann der Herausgeber eine andere HTTPS-Quelle vorgeben.
 
 In `.env`:
 
 ```
-ORBIT_CATALOG_URL=https://DEINE-DOMAIN/marketplace/catalog.json
+ORBIT_CATALOG_URL=https://quadrix-hd.github.io/orbit-central/catalog.json
 ```
 
 Orbit synchronisiert beim Programmstart, also auch nach einem App-Update. Ein bestehender lokaler Katalog bleibt während des Downloads verfügbar. Der erste Download läuft im Hintergrund; der Marketplace zeigt den Zustand. Eine defekte oder nicht erreichbare Quelle blockiert den übrigen Dienst nicht. Der Operator kann eine Synchronisierung im Marketplace manuell anstoßen. Es gibt keinen täglichen Timer.
