@@ -79,3 +79,11 @@ Indigo/Lavendel bzw. Petrol/Mint sowie ein optionales dunkles Farbschema.
 Die lokale Preview-Infrastruktur ist nicht verfügbar; die statische Demo
 wird für die visuelle Kontrolle veröffentlicht. Reale Proxmox-Systeme werden
 dabei nicht angesprochen.
+
+Die veröffentlichte 0.10-Demo wurde im Cloud-Browser auf dem Desktop visuell
+geprüft: Dashboard und neue Darstellungseinstellungen; Cloud/Ocean/Dusk wurden
+über die echten Formulare ausgewählt und gespeichert. Der lokale Schriftwechsel
+und die Farbschemata sind sichtbar. Zwei beobachtete Kontrastfehler im
+Navigationskopf und beim dunklen Button-Hover wurden korrigiert. Die GitHub-
+Prüfung einschließlich Docker-Build und Runtime-Smoke-Test ist erfolgreich.
+Eine mobile Browser-Abnahme und die echte Kundeninstanz stehen weiterhin aus.
