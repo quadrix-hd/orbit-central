@@ -1,5 +1,11 @@
 # Orbit Central · 0.7.1
 
+**Go-Umstellung:** Eine separate Go-Testversion ohne Python-Laufzeit ist unter
+[`docs/GO-MIGRATION.md`](docs/GO-MIGRATION.md) dokumentiert. Einrichtung,
+Verbindungen und Monitoring sind portiert. VM-Schreibaktionen, Konsole,
+Marketplace-Bereitstellung und Update-/Backup-Werkzeuge fehlen noch; der
+Standardcontainer bleibt bis zur vollständigen Portierung beim bisherigen Dienst.
+
 Lokale Verwaltungsoberfläche für Proxmox VE und Proxmox Backup Server. Die gehostete Website ist eine interaktive Demo. Der Docker-Dienst enthält API-Anbindung, SQLite, verschlüsselte Zugangsdaten und persistente Aufgaben.
 
 Version 0.6.0 vereinheitlicht das Design, ergänzt mehrere VE-API-Endpunkte pro Cluster, eine LXC-Grundverwaltung und das Anlegen/Ändern von HA-Gastzuständen. Die direkte Verbindung zu Proxmox VE genügt; PDM wird nicht benötigt. Die Einrichtung zeigt den Einmalcode bei interaktivem Start direkt an.

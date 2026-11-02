@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 *.tar.gz
 *.zip
+/orbit-go
+/data-go-preview/

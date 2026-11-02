@@ -1,0 +1,21 @@
+name: Go migration checks
+on:
+  push:
+    paths: ['cmd/**', 'internal/**', 'go.mod', 'go.sum', 'Dockerfile.golang', '.github/workflows/go.yml']
+  pull_request:
+    paths: ['cmd/**', 'internal/**', 'go.mod', 'go.sum', 'Dockerfile.golang', '.github/workflows/go.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache: true
+      - run: go test ./...
+      - run: go vet ./...
+      - run: CGO_ENABLED=0 go build -trimpath ./cmd/orbit
+      - run: docker build -f Dockerfile.golang -t orbit-go:test .
