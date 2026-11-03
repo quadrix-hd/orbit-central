@@ -1,0 +1,200 @@
+'use strict';
+// End-to-end test: real Orbit server (live mode) against the stateful Proxmox
+// simulator, driven through the browser like an administrator would.
+// Usage: npm run e2e   (requires Go, openssl and Playwright/Chromium)
+const { execFileSync, spawn } = require('child_process');
+const fs = require('fs'), os = require('os'), path = require('path');
+const { chromium } = require('playwright');
+
+const root = path.resolve(__dirname, '..', '..');
+const work = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-e2e-'));
+const PVE_PORT = 18006, ORBIT_PORT = 18090, ORIGIN = `http://127.0.0.1:${ORBIT_PORT}`;
+const procs = [], failures = [], passes = [];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function certs() {
+  const ssl = (...a) => execFileSync('openssl', a, { cwd: work, stdio: 'pipe' });
+  ssl('req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'ca.key', '-out', 'ca.crt', '-days', '2', '-subj', '/CN=Orbit E2E CA');
+  ssl('req', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'server.key', '-out', 'server.csr', '-subj', '/CN=pve1');
+  fs.writeFileSync(path.join(work, 'san.ext'), 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:127.0.0.2,IP:127.0.0.3\n');
+  ssl('x509', '-req', '-in', 'server.csr', '-CA', 'ca.crt', '-CAkey', 'ca.key', '-CAcreateserial', '-out', 'server.crt', '-days', '2', '-extfile', 'san.ext');
+}
+function start(cmd, args, env, name) {
+  const p = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const logFile = fs.createWriteStream(path.join(work, name + '.log'));
+  p.stdout.pipe(logFile); p.stderr.pipe(logFile);
+  procs.push(p); return p;
+}
+async function waitFor(url, tries = 60) {
+  for (let i = 0; i < tries; i++) { try { const r = await fetch(url); if (r.ok) return } catch {} await sleep(250) }
+  throw new Error('timeout waiting for ' + url);
+}
+let currentPage = null;
+async function step(name, fn) {
+  if (process.env.E2E_ONLY && failures.length) { console.log('  -', name, '(übersprungen)'); return }
+  try { await fn(); passes.push(name); console.log('  ✓', name) }
+  catch (e) {
+    failures.push(name + ': ' + (e.message || e).split('\n')[0]); console.log('  ✗', name, '-', (e.message || e).split('\n')[0]);
+    if (currentPage) { const f = path.join(work, 'fail-' + failures.length); await currentPage.screenshot({ path: f + '.png' }).catch(() => {}); fs.writeFileSync(f + '.txt', await currentPage.evaluate(() => document.body.innerText).catch(() => '')) }
+  }
+}
+const expect = (cond, msg) => { if (!cond) throw new Error(msg) };
+
+(async () => {
+  certs();
+  const bin = path.join(work, 'orbit');
+  execFileSync('go', ['build', '-o', bin, './cmd/orbit'], { cwd: root, stdio: 'inherit' });
+  start('node', [path.join(__dirname, 'mock-pve.cjs'), work, String(PVE_PORT)], {}, 'mock');
+  const data = path.join(work, 'data');
+  start(bin, [], { ORBIT_DATA_DIR: data, PORT: String(ORBIT_PORT), ORBIT_STATIC_DIR: path.join(root, 'dist'), ORBIT_PUBLIC_ORIGIN: ORIGIN, ORBIT_CA_FILE: path.join(work, 'ca.crt'), ORBIT_CATALOG_URL: '', ORBIT_NOVNC_ROOT: path.join(work, 'novnc') }, 'orbit');
+  await waitFor(ORIGIN + '/api/health');
+
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+  const jsErrors = [];
+  currentPage = page;
+  page.on('pageerror', e => jsErrors.push(e.message));
+  page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) jsErrors.push(m.text()) });
+  const api = (p, method = 'GET', body) => page.evaluate(async ([p, method, body]) => {
+    const r = await fetch('/api/' + p, { method, headers: { 'Content-Type': 'application/json', 'X-Orbit-CSRF': state.csrf || '' }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, data: await r.json().catch(() => null) };
+  }, [p, method, body]);
+  const waitOp = async (match, timeout = 20000) => {
+    const until = Date.now() + timeout;
+    while (Date.now() < until) {
+      const ops = (await api('operations')).data || [];
+      const op = ops.find(match);
+      if (op && ['completed', 'failed', 'needs_attention'].includes(op.status)) { await page.evaluate(() => { if (modal.open) closeModal(true) }); return op }
+      await sleep(400);
+    }
+    throw new Error('operation did not finish');
+  };
+  const shot = n => page.screenshot({ path: path.join(work, n + '.png') });
+  console.log('Orbit E2E · work dir', work);
+
+  await step('Ersteinrichtung mit Einmalcode', async () => {
+    await page.goto(ORIGIN);
+    await page.waitForSelector('input[name=token]', { timeout: 10000 });
+    await page.fill('input[name=token]', fs.readFileSync(path.join(data, 'setup-token'), 'utf8').trim());
+    await page.fill('input[name=password]', 'e2e-test-password-123');
+    const second = await page.$('input[name=repeat]');
+    if (second) await second.fill('e2e-test-password-123');
+    await page.click('form button.primary, form button[type=submit]');
+    await page.waitForSelector('.prism-topbar', { timeout: 10000 });
+  });
+  await step('Proxmox-Verbindung anlegen (API, eigene CA)', async () => {
+    const r = await api('connections', 'POST', { name: 'Mock-DC', url: `https://127.0.0.1:${PVE_PORT}`, token: 'orbit@pve!e2e=11111111-2222-3333-4444-555555555555', kind: 'pve', endpoints: '' });
+    expect(r.status === 200 || r.status === 201, 'status ' + r.status + ' ' + JSON.stringify(r.data));
+    await page.reload(); await page.waitForSelector('.prism-topbar');
+  });
+  await step('Dashboard zeigt Cluster, Hosts und Health', async () => {
+    await page.waitForFunction(() => state.resources.filter(r => r.type === 'node').length === 3, null, { timeout: 15000 });
+    const text = await page.textContent('#page');
+    expect(/Infrastruktur-Health/.test(text) && /3\/3/.test(text.replace(/\s/g, '')), 'dashboard content');
+    await shot('dashboard');
+  });
+  await step('VM-Liste: alle Gäste, Filter, Sortierung', async () => {
+    await page.evaluate(() => nav('vms'));
+    await page.waitForSelector('[data-vm]');
+    expect((await page.$$('[data-vm]')).length >= 4, 'guest rows');
+    await page.click('[data-vm-filter="stopped"]');
+    const stopped = await page.$$eval('[data-vm]', e => e.map(x => x.textContent));
+    expect(stopped.includes('db-02') && !stopped.includes('web-01'), 'stopped filter ' + stopped);
+    await page.click('[data-vm-filter="all"]');
+  });
+  const actOnVM = async (key, action, fill = async () => {}) => {
+    await page.evaluate(k => vmDetails(state.connections[0].id + ':' + k.split(':')[1]), key);
+    await page.waitForFunction(() => state.object && !state.object.loading, null, { timeout: 10000 });
+    await page.waitForSelector('[data-core-action]');
+    await page.evaluate(a => vmAction(state.object.vm, a, state.object.config), action);
+    await page.waitForSelector('#vm-action-form');
+    await fill();
+    await page.fill('#f-confirm_name', await page.evaluate(() => state.object.vm.name));
+    await page.click('#vm-action-form button.primary');
+  };
+  await step('VM starten (db-02)', async () => {
+    await actOnVM('mock-dc:102', 'start');
+    const op = await waitOp(o => o.vmid === 102 && o.action === 'start');
+    expect(op.status === 'completed', 'status ' + op.status + ' ' + JSON.stringify(op.events?.slice(-1)));
+  });
+  await step('Snapshot erstellen (web-01)', async () => {
+    await actOnVM('mock-dc:100', 'snapshot', () => page.fill('#f-snapshot_name', 'e2e-snap'));
+    const op = await waitOp(o => o.vmid === 100 && o.action === 'snapshot');
+    expect(op.status === 'completed', 'status ' + op.status);
+  });
+  await step('Klonen von Vorlage (verknüpft) auf pve2', async () => {
+    await actOnVM('mock-dc:9000', 'clone', async () => { await page.fill('#f-newid', '150'); await page.fill('#f-new_name', 'clone-e2e'); await page.selectOption('select[name=target]', 'pve2'); await page.uncheck('input[name=full]') });
+    const op = await waitOp(o => o.action === 'clone' && o.vmid === 9000);
+    expect(op.status === 'completed', 'status ' + op.status + ' ' + JSON.stringify(op.events?.slice(-1)));
+  });
+  await step('Migration (web-01 → pve3)', async () => {
+    await actOnVM('mock-dc:100', 'migrate', () => page.selectOption('#f-target', 'pve3'));
+    const op = await waitOp(o => o.vmid === 100 && o.action === 'migrate');
+    expect(op.status === 'completed', 'status ' + op.status);
+  });
+  await step('Backup erstellen (web-01)', async () => {
+    await page.evaluate(() => refresh(false)); await sleep(800);
+    await actOnVM('mock-dc:100', 'backup', () => page.selectOption('#f-storage', 'pbs-store'));
+    const op = await waitOp(o => o.vmid === 100 && o.action === 'backup');
+    expect(op.status === 'completed', 'status ' + op.status + ' ' + JSON.stringify(op.events?.slice(-1)));
+  });
+  await step('Neue VM auf pve3 erstellen', async () => {
+    await page.evaluate(() => nav('vms'));
+    await page.click('[data-action="create_vm"]');
+    await page.waitForSelector('#create-target');
+    const nodesOffered = await page.$$eval('#create-target select[name=node] option', o => o.map(x => x.value));
+    expect(nodesOffered.join() === 'pve1,pve2,pve3', 'nodes ' + nodesOffered);
+    await page.selectOption('#create-target select[name=node]', 'pve3');
+    await page.click('#create-target button.primary');
+    await page.waitForSelector('#create-vm-form', { timeout: 10000 });
+    await page.fill('#create-vm-form [name=name]', 'new-e2e');
+    await page.click('#create-vm-form button.primary');
+    const op = await waitOp(o => o.action === 'create' && o.name === 'new-e2e');
+    expect(op.status === 'completed' && op.node === 'pve3', 'status ' + op.status + ' node ' + op.node + ' ' + JSON.stringify(op.events?.slice(-1)));
+  });
+  await step('Hart ausschalten (db-01) mit Bestätigung', async () => {
+    await actOnVM('mock-dc:101', 'stop', () => page.check('input[name=acknowledge]'));
+    const op = await waitOp(o => o.vmid === 101 && o.action === 'stop');
+    expect(op.status === 'completed', 'status ' + op.status);
+  });
+  await step('Proxmox-Tasks und Task-Log', async () => {
+    await page.evaluate(() => { state.jobsTab = 'proxmox'; nav('jobs'); loadPveTasks(true) });
+    await page.waitForSelector('[data-task-log]', { timeout: 10000 });
+    await page.click('[data-task-log]');
+    await page.waitForSelector('.task-log', { timeout: 10000 });
+    expect(/TASK OK/.test(await page.textContent('.task-log')), 'log content');
+    await page.keyboard.press('Escape');
+  });
+  await step('Alarme: Prüfung, Regeln speichern', async () => {
+    const ev = await api('alerts/evaluate', 'POST', {});
+    expect(ev.status === 200, 'evaluate ' + ev.status);
+    const cfg = await api('alerts/config', 'POST', { rules: { node_cpu: { enabled: true, threshold: 85, minutes: 3 } } });
+    expect(cfg.status === 200 && cfg.data.rules.node_cpu.threshold === 85, 'rules ' + JSON.stringify(cfg.data));
+    await page.evaluate(() => nav('alerts')); await page.waitForSelector('[data-alert-tab]');
+  });
+  await step('DRS-Seite rendert Empfehlungen ohne Fehler', async () => {
+    await page.evaluate(() => nav('drs')); await page.waitForSelector('.drs-cluster');
+  });
+  await step('Suche navigiert zur VM', async () => {
+    await page.fill('#global-search', 'db-0'); await sleep(150); await page.keyboard.press('Enter');
+    await page.waitForFunction(() => state.page === 'object', null, { timeout: 8000 });
+  });
+  await step('Storage-, Netzwerk-, Datensicherungs- und Lifecycle-Seiten laden', async () => {
+    for (const p of ['storage', 'network', 'protection', 'security', 'lifecycle', 'clusters', 'settings']) {
+      await page.evaluate(x => nav(x), p); await sleep(900);
+      const errs = (await page.$$eval('#page .hint.error', e => e.map(x => x.textContent.trim()))).filter(Boolean);
+      if (errs.length) throw new Error(p + ': ' + errs[0]);
+    }
+  });
+  await step('Abmelden', async () => {
+    await page.evaluate(() => actions.logout()); await page.waitForSelector('input[name=password]', { timeout: 8000 });
+  });
+  await step('Keine JavaScript-Fehler', async () => expect(!jsErrors.length, jsErrors.slice(0, 3).join(' | ')));
+
+  await browser.close();
+  for (const p of procs) p.kill();
+  const unknown = fs.readFileSync(path.join(work, 'mock.log'), 'utf8').split('\n').filter(l => l.startsWith('UNKNOWN'));
+  console.log(`\n${passes.length} bestanden, ${failures.length} fehlgeschlagen`);
+  if (unknown.length) console.log('Vom Mock nicht unterstützte Aufrufe:\n  ' + unknown.join('\n  '));
+  if (failures.length) { console.log('Fehler:\n  ' + failures.join('\n  ') + '\nLogs: ' + work); process.exit(1) }
+})().catch(e => { console.error(e); for (const p of procs) p.kill(); process.exit(1) });
