@@ -390,10 +390,7 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 			advance("resize")
 		}
 		if op["stage"] == "resize" {
-			config := configOf(s.call(ctx, c, "GET", vm+"/config", nil))
-			if config["name"] != op["name"] {
-				fail("VM-Identität stimmt nicht mehr.")
-			}
+			config := s.guestConfig(ctx, c, vm, "name", str(op["name"]))
 			if num(a["disk"]) > diskGiB(config, "scsi0") {
 				begin("resize")
 				result := s.call(ctx, c, "PUT", vm+"/resize", doc{"disk": "scsi0", "size": str(a["disk"]) + "G"})
@@ -412,10 +409,9 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 		}
 		if op["stage"] == "start" {
 			if a["start"] == true {
-				vm := s.findVM(ctx, c, int(num(op["vmid"])), node)
-				if vm["name"] != op["name"] {
-					fail("VM-Identität stimmt nicht mehr.")
-				}
+				// /cluster/resources lags behind a freshly created VM; check
+				// the VM's own configuration instead.
+				s.guestConfig(ctx, c, vm, "name", str(op["name"]))
 				begin("start")
 				waiting("start", s.call(ctx, c, "POST", base+"/qemu/"+str(op["vmid"])+"/status/start", nil))
 			} else {
@@ -443,5 +439,33 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 				s.persist("operations", op, "Temporäres Cloud-Image nach dem Fehler entfernt.")
 			}
 		})
+	}
+}
+
+// guestConfig reads a freshly created or cloned guest's configuration and
+// checks its name. Proxmox keeps a create/clone lock for a moment after the
+// task, so a missing name or an active lock is retried for up to 30 s.
+func (s *Server) guestConfig(ctx context.Context, c Connection, path, nameKey, want string) doc {
+	for attempt := 0; ; attempt++ {
+		cfg := asDoc(s.call(ctx, c, "GET", path+"/config", nil))
+		got := str(cfg[nameKey])
+		if got == want && str(cfg["lock"]) == "" {
+			return cfg
+		}
+		if attempt < 20 && (got == "" || str(cfg["lock"]) != "") {
+			select {
+			case <-ctx.Done():
+				panic(ctx.Err())
+			case <-time.After(1500 * time.Millisecond):
+			}
+			continue
+		}
+		if got == want {
+			return cfg
+		}
+		if got == "" {
+			fail("Die VM hat in Proxmox noch keinen Namen" + map[bool]string{true: " (Sperre: " + str(cfg["lock"]) + ")", false: ""}[str(cfg["lock"]) != ""] + ". Konfiguration in Proxmox prüfen.")
+		}
+		fail("VM-Identität stimmt nicht mehr: Proxmox meldet „" + got + "“ statt „" + want + "“.")
 	}
 }
