@@ -65,7 +65,7 @@ func actionServer(t *testing.T) (*Server, *fakePVE) {
 			case path == "/cluster/nextid":
 				data = "101"
 			case strings.HasSuffix(path, "/content"):
-				data = []any{doc{"volid": "local:iso/test.iso"}, doc{"volid": "local:backup/vzdump-qemu-100.vma.zst"}}
+				data = []any{doc{"volid": "local:iso/test.iso", "content": "iso"}, doc{"volid": "local:backup/vzdump-qemu-100.vma.zst", "content": "backup"}}
 			default:
 				data = []any{}
 			}

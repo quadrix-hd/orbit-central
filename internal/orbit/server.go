@@ -247,7 +247,8 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	}
 	data := map[string]any{}
 	var err error
-	if method == "POST" {
+	// File uploads stream their body; everything else is a small JSON document.
+	if method == "POST" && !(strings.HasPrefix(path, "/api/connections/") && strings.HasSuffix(path, "/storage-upload")) {
 		data, err = readBody(w, r)
 		if err != nil {
 			return err
@@ -409,6 +410,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	}
 	if strings.HasPrefix(path, "/api/connections/") {
 		if handled, err := s.backupJobRoutes(w, r, data); handled || err != nil {
+			return err
+		}
+		if handled, err := s.storageContentRoutes(w, r, data); handled || err != nil {
 			return err
 		}
 	}

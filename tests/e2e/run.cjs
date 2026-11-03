@@ -206,6 +206,25 @@ function totp(secret, at = Date.now()) {
     const job = jobs.find(j => j.schedule === 'sun 03:00');
     expect(job && job.vmid === '100,101' && /keep-weekly=8/.test(job['prune-backups']), 'job ' + JSON.stringify(jobs));
   });
+  await step('ISO hochladen, per URL laden und löschen (Live)', async () => {
+    await page.evaluate(() => nav('storage'));
+    await page.waitForSelector('[data-storage-browse$=":local"]', { timeout: 10000 });
+    await page.click('[data-storage-browse$=":local"]');
+    await page.waitForSelector('#storage-volumes table, #storage-volumes p', { timeout: 10000 });
+    await page.click('[data-st-mode="upload"]');
+    await page.selectOption('#f-st_content', 'iso');
+    await page.setInputFiles('#st-file', { name: 'tools-e2e.iso', mimeType: 'application/octet-stream', buffer: Buffer.alloc(256 * 1024, 7) });
+    await page.click('#st-upload button.primary');
+    await page.waitForFunction(() => /tools-e2e\.iso/.test(document.querySelector('#storage-volumes')?.textContent || ''), null, { timeout: 15000 });
+    await page.click('[data-st-mode="download"]');
+    await page.fill('#f-st_url', 'https://cdimage.example/debian-13-netinst.iso');
+    await page.click('#st-download button.primary');
+    await page.waitForFunction(() => /debian-13-netinst\.iso/.test(document.querySelector('#storage-volumes')?.textContent || ''), null, { timeout: 15000 });
+    page.once('dialog', d => d.accept('local:iso/tools-e2e.iso'));
+    await page.click('[data-st-delete="local:iso/tools-e2e.iso"]');
+    await page.waitForFunction(() => !/tools-e2e\.iso/.test(document.querySelector('#storage-volumes')?.textContent || ''), null, { timeout: 15000 });
+    await page.evaluate(() => closeModal(true));
+  });
   await step('Benutzer anlegen (Operator) über die Oberfläche', async () => {
     await page.evaluate(() => { state.settingsTab = 'users'; nav('settings') });
     await page.waitForSelector('[data-user-edit=""]', { timeout: 8000 });

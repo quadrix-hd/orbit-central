@@ -654,3 +654,10 @@ details[open]>summary .chev{transform:rotate(-135deg) translate(-2px,-2px)}
 .keep-grid input{min-height:34px}
 @media(max-width:700px){.keep-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .data-table td small.muted{display:block}
+
+.storage-actions{display:flex;gap:8px;margin:10px 0}
+.storage-form{padding:14px;margin:0 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+.storage-form-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap}
+.upload-progress{display:grid;gap:4px;margin:8px 0}
+.upload-progress .usage-track{height:8px}
+td.volid{font:12px ui-monospace,Menlo,Consolas,monospace;word-break:break-all;white-space:normal!important}
