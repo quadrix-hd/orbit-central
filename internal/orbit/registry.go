@@ -211,6 +211,45 @@ func seedISO(ctx context.Context, path, name, username, ssh, id string, packages
 		fail("NoCloud-ISO konnte nicht erstellt werden. xorriso im Image prüfen.")
 	}
 }
+
+// uploadReason extracts Proxmox's short error text from a rejected upload
+// without echoing arbitrary amounts of response data.
+func uploadReason(resp *http.Response) string {
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	reason := strings.TrimSpace(resp.Status)
+	var envelope doc
+	if json.Unmarshal(raw, &envelope) == nil {
+		if m := strings.TrimSpace(str(envelope["message"])); m != "" {
+			reason = m
+		}
+		if errs, ok := envelope["errors"].(map[string]any); ok {
+			for k, v := range errs {
+				reason += " " + k + ": " + strings.TrimSpace(str(v))
+			}
+		}
+	} else if text := strings.TrimSpace(string(raw)); text != "" && len(text) < 300 {
+		reason = text
+	}
+	reason = strings.Join(strings.Fields(reason), " ")
+	if len(reason) > 240 {
+		reason = reason[:240] + "…"
+	}
+	if reason == "" {
+		return ""
+	}
+	return ": " + reason
+}
+
+// removeImportImage deletes the temporary cloud image from the import
+// storage. The VM disk is a copy (import-from), so the file is no longer
+// needed once the VM exists, and it is useless after a definite failure.
+func (s *Server) removeImportImage(ctx context.Context, c Connection, node string, a doc, imageName string) bool {
+	volid := str(a["import_storage"]) + ":import/" + imageName
+	path := "/nodes/" + url.PathEscape(node) + "/storage/" + url.PathEscape(str(a["import_storage"])) + "/content/" + url.PathEscape(volid)
+	_, err := s.PVE.Call(ctx, c, "DELETE", path, nil)
+	return err == nil
+}
+
 func (s *Server) upload(ctx context.Context, c Connection, node, store, path, name, content string) any {
 	if !assetNameRE.MatchString(name) || !contains("iso,import", content) {
 		fail("Ungültiger Upload.")
@@ -223,8 +262,10 @@ func (s *Server) upload(ctx context.Context, c Connection, node, store, path, na
 	must(f.Seek(0, io.SeekStart))
 	prefix := &bytes.Buffer{}
 	writer := multipart.NewWriter(prefix)
-	for k, v := range map[string]string{"content": content, "checksum": hex.EncodeToString(h.Sum(nil)), "checksum-algorithm": "sha256"} {
-		if e := writer.WriteField(k, v); e != nil {
+	// pveproxy reads the form fields strictly in this order before the file
+	// part (PVE::APIServer::AnyEvent::file_upload_multipart).
+	for _, kv := range [][2]string{{"content", content}, {"checksum-algorithm", "sha256"}, {"checksum", hex.EncodeToString(h.Sum(nil))}} {
+		if e := writer.WriteField(kv[0], kv[1]); e != nil {
 			panic(e)
 		}
 	}
@@ -246,7 +287,7 @@ func (s *Server) upload(ctx context.Context, c Connection, node, store, path, na
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		panic(&Problem{"Proxmox-Upload abgelehnt. Storage und Datastore.AllocateTemplate prüfen.", 502, resp.StatusCode >= 500})
+		panic(&Problem{"Proxmox-Upload abgelehnt (HTTP " + strconv.Itoa(resp.StatusCode) + uploadReason(resp) + "). Storage, Inhaltstyp und Datastore.AllocateTemplate prüfen.", 502, resp.StatusCode >= 500})
 	}
 	var envelope doc
 	if e := json.NewDecoder(io.LimitReader(resp.Body, 1024*1024)).Decode(&envelope); e != nil {
@@ -339,6 +380,9 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 		}
 		if op["stage"] == "create_waiting" {
 			s.waitTask(ctx, c, node, str(op["upid"]))
+			if s.removeImportImage(ctx, c, node, a, imageName) {
+				s.persist("operations", op, "Temporäres Cloud-Image aus dem Import-Storage entfernt.")
+			}
 			advance("resize")
 		}
 		if op["stage"] == "resize" {
@@ -385,4 +429,15 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 		}
 	})
 	s.finishError(ctx, "operations", op, err)
+	// A definite failure before the VM exists leaves the downloaded image
+	// behind; remove it. Uncertain states (needs_attention) are left alone.
+	if err != nil && op["status"] == "failed" && contains("image_waiting,seed,seed_submitting,seed_waiting,create,create_submitting", str(op["stage"])) {
+		_ = guarded(func() {
+			a := configOf(op["args"])
+			c := s.conn(str(op["connection_id"]))
+			if s.removeImportImage(ctx, c, str(op["node"]), a, "orbit-img-"+str(op["id"])+".qcow2") {
+				s.persist("operations", op, "Temporäres Cloud-Image nach dem Fehler entfernt.")
+			}
+		})
+	}
 }
