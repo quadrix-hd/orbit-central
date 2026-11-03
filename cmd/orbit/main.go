@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // zone data for TZ=… in the slim image
 
 	"github.com/quadrix-hd/orbit-central/internal/orbit"
 )

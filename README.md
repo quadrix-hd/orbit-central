@@ -1,6 +1,8 @@
-# Orbit Central · Go 0.13.1
+# Orbit Central · Go 0.14.0
 
-Lokales Dashboard für Proxmox VE und optional Proxmox Backup Server.
+Verwaltungsoberfläche für Proxmox VE und optional Proxmox Backup Server –
+mehrere Cluster, Benutzer mit Rollen, Automatisierung, Wartung und
+Marketplace in einer Oberfläche. Navigation im Stil von Nutanix Prism.
 Der Server, die Proxmox-Anbindung, Aufgabenverarbeitung, Konsole, Registry und
 Wartungswerkzeuge laufen mit Go. Die Oberfläche verwendet HTML, CSS und
 JavaScript. Der fertige Container enthält keinen Python-Dienst und benötigt
@@ -112,26 +114,100 @@ die IP muss auch zum Zertifikat passen. TLS-Verifikation wird nicht deaktiviert.
 
 ## Funktionsumfang
 
-- Einrichtung, Anmeldung, Sitzungen, CSRF-/Ursprungsschutz, Anmeldebegrenzung.
-- PVE-/PBS-Verbindungen, Inventar, Ressourcen und Modulübersichten.
-- VM-/LXC-Details, Messwerte, Snapshots, Hardwareübersicht.
-- VM-Start, Shutdown, Reboot, CPU/RAM, Backup, Migration und Snapshots.
-- QEMU-Hardware: Laufwerk hinzufügen/vergrößern, NIC/VLAN, ISO, Metadaten.
-- Bestätigtes VM-Löschen, Snapshot-Rollback und Snapshot-Löschen.
-- Neue QEMU-VM aus ISO und Restore eines QEMU-Backups auf eine freie VMID.
-- HA-Gastzustände bei vorhandenem Cluster-Quorum.
-- Persistente, idempotente Aufgaben mit UPID-Verfolgung und manueller Prüfung.
-- Vorlagen-Blueprints, vollständige Klone, Cloud-init-Konfiguration.
-- QEMU-noVNC-Konsole mit einmaliger Freigabe, Sitzungsbindung und TLS-Proxy.
-- Zentraler Marketplace mit Web-/Cache-Modus, SHA-256-Prüfung und periodischer
-  Aktualisierung. Cloud-Image-Bereitstellung über Proxmox VE 9+.
-- Go-Werkzeuge für Backup, Restore, Zugriffsreset und Update/Rollback.
+**Infrastruktur und Gäste**
+- Mehrere Proxmox-VE-Cluster und PBS in einer Oberfläche, Dashboard mit
+  Health-Score, Live-Messwerten und Kapazität.
+- VMs und Container: erstellen, starten, herunterfahren, hart ausschalten,
+  Reset, pausieren, klonen (voll/verknüpft), in Vorlage umwandeln, migrieren
+  (QEMU live, LXC als Neustart-Migration), löschen mit Bestätigung.
+- Hardware, Netzwerkkarten, Laufwerke, ISO, Optionen, Snapshots, Backup und
+  Restore, noVNC-Konsole mit „Text einfügen“ und Strg+Alt+Entf.
+- Verlaufsdiagramme (Stunde bis Jahr) für Hosts, VMs und Container.
+- Tags anzeigen, filtern und bearbeiten (Proxmox-Tags).
+- Änderungsprotokoll pro Gast: Orbit-Aktionen mit Benutzer plus Proxmox-Tasks
+  aller Hosts.
+- Storage: Inhalte, ISO/Vorlagen hochladen oder per URL laden, Volumes
+  löschen, Storage-Konfiguration (Directory, NFS, LVM-thin, ZFS).
+- Netzwerk (Bridge/Bond/VLAN mit Diff und Anwenden) und Firewall.
 
-Keine vollständige Abdeckung der Proxmox-Oberfläche: LXC-Erstellung und
-LXC-Terminal, Host-Upgrades, umfassende Netzwerk-/Firewall-/Storage-Editoren,
-mehrere Orbit-Benutzer mit Rollen und SSO sind nicht implementiert. Die
-entsprechenden Module zeigen den beschriebenen Leseumfang. Keine Behauptung
-vollständiger Nutanix-/Proxmox-Funktionsgleichheit.
+**Betrieb**
+- Alarme mit Regeln und Benachrichtigung (Teams, Slack, Discord, ntfy,
+  Webhook, E-Mail), Proxmox-Task-Zentrale mit Logs.
+- Lastverteilung (DRS) mit Anti-Affinität per Tag.
+- Wartungsmodus pro Host: laufende Gäste werden automatisch live verschoben
+  und danach zurückgeholt; Rolling-Neustart Host für Host.
+- Updates je Host anzeigen, Paketliste aktualisieren, Host-Shell und
+  „Updates installieren“ (Proxmox-Anmeldung erforderlich, siehe unten).
+- Backup-Zeitpläne anlegen/bearbeiten, automatische Restore-Tests.
+- Geplante Aktionen: Start, Herunterfahren, Neustart, hart ausschalten,
+  Snapshot mit Aufbewahrung, Backup, Restore-Test – täglich, an Wochentagen
+  oder einmalig, für VMIDs oder alle Gäste mit einem Tag.
+- Berichte: CSV (Gäste, Hosts, Storage, Aktionen, Audit) und druckbarer
+  Kapazitätsbericht (PDF über den Druckdialog).
+
+**Zugriff und Sicherheit**
+- Benutzer mit Rollen Administrator, Operator, Nur lesen; Zwei-Faktor
+  (TOTP), Single Sign-on per OIDC, persönliche API-Tokens
+  (`Authorization: Bearer orb_…`).
+- Audit-Protokoll mit Benutzer, CSRF-/Ursprungsschutz, Anmeldebegrenzung,
+  verschlüsselte Zugangsdaten.
+- Persistente, idempotente Aufgaben mit UPID-Verfolgung; unklare Zustände
+  nach einem Neustart werden zur manuellen Prüfung angehalten.
+
+Was Orbit gegenüber der Proxmox-Oberfläche noch nicht kann (u. a.
+Datenträger/ZFS/Ceph, Cluster-Einrichtung, SDN, Proxmox-eigene Rechte):
+[PROXMOX_UI_COVERAGE.md](PROXMOX_UI_COVERAGE.md).
+
+## Bedienung
+
+Oben links wählt das **Bereichsmenü** (z. B. „Dashboard ▾“) alle Bereiche wie
+in Nutanix Prism Element; die Suche (`/`) springt zu VMs, Hosts, Seiten und
+Einstellungen. Die frühere Seitenleiste lässt sich im Benutzermenü über
+„Seitenleiste verwenden“ wieder einschalten (pro Browser). Farbschema unter
+Einstellungen → Darstellung („Orbit Hell“, „Orbit Dunkel“ u. a.).
+
+## Benutzer, Rollen und Anmeldung
+
+- **Administrator**: alles, inkl. Verbindungen, Benutzer, Systemeinstellungen,
+  Zeitpläne, Wartung, Host-Shell und Löschen von Gästen.
+- **Operator**: Gäste betreiben (Start/Stopp, Snapshots, Backups, Migration,
+  Klonen, Konsole, Tags, Restore-Tests), keine Verwaltung.
+- **Nur lesen**: alles ansehen, nichts ändern.
+
+Bestehende Installationen: Der bisherige Zugang wird zum Benutzer `admin` mit
+dem bisherigen Passwort. Zwei-Faktor und API-Tokens unter Einstellungen →
+Konto & Sicherheit. OIDC (z. B. Entra ID, Keycloak, Authentik) unter
+Einstellungen → Benutzer; Redirect-URI: `<ORBIT_PUBLIC_ORIGIN>/api/oidc/callback`.
+
+## Rechte des Proxmox-API-Tokens
+
+Orbit arbeitet mit den Rechten des hinterlegten Tokens. Für den vollen
+Funktionsumfang (z. B. Rolle `PVEAdmin` auf `/` oder gezielt):
+
+| Funktion | Benötigte Rechte |
+| --- | --- |
+| Gäste betreiben, Tags, Optionen | `VM.PowerMgmt`, `VM.Config.*`, `VM.Snapshot` |
+| Erstellen, Klonen, Restore, Restore-Test | `VM.Allocate`, `VM.Clone`, `Datastore.AllocateSpace` |
+| Backups und Backup-Zeitpläne | `VM.Backup`, `Datastore.Allocate`, `Sys.Modify` |
+| ISO-Upload/-Download | `Datastore.AllocateTemplate` |
+| Wartungsmodus (Migration), Rolling-Neustart | `VM.Migrate`, `Sys.PowerMgmt` |
+| Updates anzeigen/aktualisieren | `Sys.Audit`, `Sys.Modify` |
+
+Die **Host-Shell** lässt Proxmox grundsätzlich nicht mit API-Tokens zu. Orbit
+fragt dafür nach einem Proxmox-Benutzer (z. B. `root@pam`), Passwort und
+ggf. 2FA-Code; die Angaben gelten nur für diese Sitzung und werden nicht
+gespeichert. „Updates installieren“ erlaubt Proxmox nur `root@pam`.
+
+## Zeitzone
+
+Geplante Aktionen laufen in der Zeitzone des Orbit-Servers. `compose.yaml`
+setzt standardmäßig `Europe/Berlin`; andere Zone in `.env`:
+
+```dotenv
+TZ=Europe/Vienna
+```
+
+Die aktive Zone steht unter „Geplante Aktionen“ unten auf der Seite.
 
 ## Marketplace
 
@@ -142,6 +218,14 @@ Basisimages stammen von offiziellen Distributionsservern. Web-Modus: Proxmox
 lädt das Image bei der Bereitstellung und prüft SHA-256. Cache-Modus: Orbit
 hält die geprüften Images lokal vor und überträgt sie über die API. Eine
 Katalogaktualisierung verändert keine bestehende VM.
+
+25 Pakete: Betriebssysteme (Ubuntu, Debian), Datenbanken (PostgreSQL,
+MariaDB, Redis, Memcached), Web/Netzwerk (Nginx, Apache, HAProxy, Squid,
+BIND9, Nginx Proxy Manager), Monitoring (Prometheus, Grafana, Uptime Kuma,
+Zabbix-Agent), Speicher (Samba, NFS), Anwendungen (Mosquitto, RabbitMQ,
+Nextcloud, Gitea, Vaultwarden), Container (Docker, Portainer). Docker-Apps
+nutzen streng geprüfte Container-Rezepte (Image, Ports, Volumes, Umgebung) –
+der Katalog kann keine beliebigen Befehle ausführen.
 
 Cloud-Image-Import benötigt VE 9+, einen ausdrücklich eingetragenen
 HTTPS-Endpunkt des Ziel-Nodes und aktive Storages für `images`, `import` und
@@ -181,6 +265,9 @@ npm ci
 npm test
 go run ./cmd/orbit export-preview
 ```
+
+End-to-End-Test gegen einen simulierten 3-Node-Cluster (Playwright, echter
+Orbit-Server im Live-Modus): `npm run e2e`.
 
 Go 1.25+; Docker nutzt den festgelegten Toolchain-Stand. Für reale NoCloud-ISO-
 Erstellung außerhalb des Containers muss xorriso installiert sein. Go-Tests
