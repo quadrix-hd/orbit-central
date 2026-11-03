@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -18,23 +19,89 @@ import (
 	"time"
 )
 
+// nodeConnection returns a connection whose API endpoint terminates on the
+// given node. File uploads (cloud images, cloud-init seed ISOs) must reach the
+// node that owns the target storage, so the cluster proxy is not used for them.
+// Configured endpoints are tried first; then the node address reported by the
+// cluster itself and a hostname derived from the connection URL. An endpoint
+// is only accepted when it presents a trusted certificate and reports itself as
+// the requested node.
 func (s *Server) nodeConnection(ctx context.Context, c Connection, node string) Connection {
-	for _, endpoint := range must(ValidateEndpoints(c.URL, c.Endpoints)) {
+	try := func(endpoint string) (Connection, bool) {
 		candidate := c
 		candidate.URL = endpoint
 		candidate.Endpoints = nil
 		data, err := s.PVE.once(ctx, candidate, endpoint, "GET", "/cluster/status", nil)
 		if err != nil {
-			continue
+			return candidate, false
 		}
 		for _, row := range objects(data) {
 			if row["type"] == "node" && row["name"] == node && truth(row["local"]) {
-				return candidate
+				return candidate, true
+			}
+		}
+		return candidate, false
+	}
+	configured := must(ValidateEndpoints(c.URL, c.Endpoints))
+	for _, endpoint := range configured {
+		if pin, ok := try(endpoint); ok {
+			return pin
+		}
+	}
+	tried := []string{}
+	for _, endpoint := range s.discoverNodeEndpoints(ctx, c, node) {
+		if contains(strings.Join(configured, ","), endpoint) {
+			continue
+		}
+		tried = append(tried, endpoint)
+		if pin, ok := try(endpoint); ok {
+			return pin
+		}
+	}
+	message := "Node " + node + " ist über keine API-Adresse direkt erreichbar."
+	if len(tried) > 0 {
+		message += " Geprüft: " + strings.Join(tried, ", ") + " (Netzwerk oder Zertifikat passt nicht)."
+	}
+	message += " Adresse dieses Nodes in der Verbindung als zusätzlichen Endpunkt eintragen, z. B. https://<IP>:8006; das Zertifikat muss zu dieser Adresse passen."
+	fail(message)
+	return c
+}
+
+// discoverNodeEndpoints derives candidate API addresses for a cluster member
+// from /cluster/status (node IP) and from the naming scheme of the connection
+// URL (pve1.example.lan -> <node>.example.lan). Port and scheme follow the
+// configured connection.
+func (s *Server) discoverNodeEndpoints(ctx context.Context, c Connection, node string) []string {
+	base, err := url.Parse(c.URL)
+	if err != nil {
+		return nil
+	}
+	port := base.Port()
+	if port == "" {
+		port = "8006"
+	}
+	out := []string{}
+	add := func(host string) {
+		endpoint := "https://" + net.JoinHostPort(host, port)
+		if _, e := ValidateEndpoints(endpoint, nil); e == nil && !contains(strings.Join(out, ","), endpoint) {
+			out = append(out, endpoint)
+		}
+	}
+	if data, e := s.PVE.Call(ctx, c, "GET", "/cluster/status", nil); e == nil {
+		for _, row := range objects(data) {
+			if row["type"] == "node" && row["name"] == node {
+				if ip := net.ParseIP(str(row["ip"])); ip != nil {
+					add(ip.String())
+				}
 			}
 		}
 	}
-	fail("Gültige HTTPS-Adresse des Ziel-Nodes als Cluster-Endpunkt hinterlegen.")
-	return c
+	if host := base.Hostname(); net.ParseIP(host) == nil {
+		if parts := strings.SplitN(host, ".", 2); len(parts) == 2 && taskNodePattern.MatchString(node) {
+			add(node + "." + parts[1])
+		}
+	}
+	return out
 }
 func (s *Server) registryTargets(ctx context.Context, c Connection, node string) doc {
 	if c.Kind != "pve" {
@@ -195,20 +262,10 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 	err := guarded(func() {
 		a := configOf(op["args"])
 		c := s.conn(str(op["connection_id"]))
-		endpoint := str(a["endpoint"])
-		valid := false
-		for _, v := range must(ValidateEndpoints(c.URL, c.Endpoints)) {
-			if v == endpoint {
-				valid = true
-			}
-		}
-		if !valid {
-			fail("Ziel-Endpunkt wurde entfernt.")
-		}
-		pin := c
-		pin.URL = endpoint
-		pin.Endpoints = nil
 		node := str(op["node"])
+		// Re-verify on every run: the endpoint must still terminate on the
+		// target node (configured or discovered from the cluster).
+		pin := s.nodeConnection(ctx, c, node)
 		base := "/nodes/" + url.PathEscape(node)
 		vm := baseVM(node, "qemu", int(num(op["vmid"])))
 		imageName := "orbit-img-" + str(op["id"]) + ".qcow2"
