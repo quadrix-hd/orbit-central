@@ -439,7 +439,7 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 		panic(problem("VM-Name stimmt nicht überein oder Gast ist eine Vorlage.", 409))
 	}
 	kind := str(vm["type"])
-	if kind == "lxc" && !contains("start,shutdown,reboot,stop,snapshot,backup,configure,migrate,ha,clone,template", action) {
+	if kind == "lxc" && !contains("start,shutdown,reboot,stop,snapshot,backup,configure,migrate,ha,clone,template,tags,snapshot_delete", action) {
 		fail("Diese Aktion wird für LXC nicht unterstützt.")
 	}
 	a := doc{}
@@ -530,6 +530,16 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 			s.storeTarget(ctx, c, defaultText(str(a["target"]), node), store, "images")
 			a["storage"] = store
 		}
+	case "tags":
+		raw, ok := d["tags"].(string)
+		if !ok || len(raw) > 1000 {
+			fail("Ungültige Tags.")
+		}
+		if tags := normalizeTags(raw); len(tags) > 0 {
+			a["tags"] = strings.Join(tags, ";")
+		} else {
+			a["delete"] = "tags"
+		}
 	case "disk_add", "disk_resize", "nic", "metadata", "iso", "rollback", "snapshot_delete", "delete":
 		a = s.hardwareArgs(ctx, c, vm, d, action)
 	default:
@@ -553,12 +563,16 @@ func boolInt(v bool) int {
 }
 func (s *Server) hardwareArgs(ctx context.Context, c Connection, vm, d doc, action string) doc {
 	node := str(vm["node"])
-	base := baseVM(node, "qemu", int(num(vm["vmid"])))
+	kind, nameKey := defaultText(str(vm["type"]), "qemu"), "name"
+	if kind == "lxc" {
+		nameKey = "hostname"
+	}
+	base := baseVM(node, kind, int(num(vm["vmid"])))
 	config := configOf(s.call(ctx, c, "GET", base+"/config", nil))
-	if config["name"] != vm["name"] {
+	if config[nameKey] != vm["name"] {
 		fail("VM-Identität hat sich geändert.")
 	}
-	if action != "metadata" && vm["status"] != "stopped" {
+	if action != "metadata" && action != "snapshot_delete" && vm["status"] != "stopped" {
 		fail("Änderung benötigt eine gestoppte VM.")
 	}
 	a := doc{"digest": config["digest"]}
@@ -719,7 +733,7 @@ func (s *Server) processOperation(ctx context.Context, op doc) {
 				if action == "clone" {
 					s.unused(ctx, c, int(num(args["newid"])), defaultText(str(args["name"]), str(args["hostname"])))
 				}
-				if contains("configure,disk_add,disk_resize,nic,iso,rollback,snapshot_delete,delete,template", action) && vm["status"] != "stopped" {
+				if contains("configure,disk_add,disk_resize,nic,iso,rollback,delete,template", action) && vm["status"] != "stopped" {
 					fail("Gast ist inzwischen gestartet. Änderung abgebrochen.")
 				}
 			}
@@ -747,7 +761,7 @@ func (s *Server) processOperation(ctx context.Context, op doc) {
 				synchronous = true
 			case "create", "restore", "lxc_create", "lxc_restore":
 				path = "/nodes/" + url.PathEscape(node) + "/" + kind
-			case "configure", "metadata", "nic", "iso":
+			case "configure", "metadata", "nic", "iso", "tags":
 				method = "PUT"
 				path = base + "/config"
 				synchronous = true
@@ -862,6 +876,7 @@ func (s *Server) RunWorkers(ctx context.Context) {
 	}()
 	go func() { defer s.workers.Done(); s.Catalog.Run(ctx) }()
 	s.RunAlerts(ctx)
+	s.RunSchedules(ctx)
 }
 
 func (s *Server) WaitWorkers() { s.workers.Wait() }

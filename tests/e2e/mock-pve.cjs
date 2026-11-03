@@ -112,7 +112,7 @@ function route(local, method, p, q, body) {
   if (rest === '/apt/update') return method === 'GET' ? [{ Package: 'pve-manager', OldVersion: '9.0.9', Version: '9.0.10', Priority: 'important' }] : task(node, 'aptupdate', '');
   if (rest === '/apt/versions') return [{ Package: 'pve-manager', Version: '9.0.10' }, { Package: 'proxmox-ve', Version: '9.0.0' }];
   if (rest === '/vzdump') return task(node, 'vzdump', body.vmid || '');
-  if (rest === '/tasks') return state.tasks.filter(t => t.node === node);
+  if (rest === '/tasks') return state.tasks.filter(t => t.node === node && (!q.get('vmid') || t.id === q.get('vmid')));
   if ((m = rest.match(/^\/tasks\/([^/]+)\/(status|log)$/))) {
     const t = state.tasks.find(x => x.upid === decodeURIComponent(m[1]));
     if (!t) throw { status: 404, message: 'no such task' };
@@ -152,7 +152,7 @@ function route(local, method, p, q, body) {
     if (sub === '/config') {
       if (method === 'GET') return { ...g.config, name: g.name };
       const del = String(body.delete || '').split(',').filter(Boolean); Object.assign(g.config, body); delete g.config.delete; delete g.config.digest; for (const k of del) delete g.config[k];
-      g.config.digest = 'c' + Date.now(); if (body.name) g.name = body.name; if (body.cores) g.maxcpu = +body.cores; if (body.memory) g.maxmem = +body.memory * 1048576;
+      g.config.digest = 'c' + Date.now(); if (body.tags !== undefined) g.tags = body.tags; if (del.includes('tags')) g.tags = ''; if (body.name) g.name = body.name; if (body.cores) g.maxcpu = +body.cores; if (body.memory) g.maxmem = +body.memory * 1048576;
       return method === 'POST' ? task(node, prefix + 'config', id) : null;
     }
     if (sub === '/status/current') return { status: g.status, qmpstatus: g.paused ? 'paused' : g.status, cpu: g.status === 'running' ? g.cpu : 0, cpus: g.maxcpu, mem: g.status === 'running' ? g.mem : 0, maxmem: g.maxmem, uptime: g.status === 'running' ? 3600 : 0, agent: 1, name: g.name };

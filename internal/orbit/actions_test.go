@@ -17,6 +17,7 @@ type fakePVE struct {
 	result    any
 	status    string
 	lose      bool
+	snaps     []any
 }
 
 func actionServer(t *testing.T) (*Server, *fakePVE) {
@@ -60,6 +61,9 @@ func actionServer(t *testing.T) (*Server, *fakePVE) {
 				data = doc{"status": "stopped", "exitstatus": "OK"}
 			case strings.HasSuffix(path, "/snapshot"):
 				data = []any{doc{"name": "snap1"}}
+				if f.snaps != nil {
+					data = f.snaps
+				}
 			case path == "/cluster/ha/resources":
 				data = []any{}
 			case path == "/cluster/nextid":

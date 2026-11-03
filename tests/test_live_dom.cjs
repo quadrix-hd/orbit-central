@@ -2,7 +2,7 @@ const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/st
 const dom=new JSDOM('<html><body><div id="app"></div><div id="toast"></div><dialog id="modal"></dialog></body></html>',{url:'https://orbit.example',runScripts:'outside-only'}),w=dom.window;
 w.setTimeout=()=>1;w.setInterval=()=>1;w.clearTimeout=()=>{};w.scrollTo=()=>{};w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};w.AbortSignal=AbortSignal;w.console=console;
 const ctx=dom.getInternalVMContext(),run=source=>vm.runInContext(source,ctx);
-for(const f of ['app.js','vm-workspace.js','infrastructure.js','management.js','live.js','operations.js'])run(fs.readFileSync('dist/'+f,'utf8'));
+for(const f of ['app.js','vm-workspace.js','infrastructure.js','management.js','live.js','operations.js','automation.js'])run(fs.readFileSync('dist/'+f,'utf8'));
 run("state.mode='demo';state.authenticated=true;loadDemo();state.page='settings';state.settingsTab='defaults';render()");
 const input=w.document.querySelector('[name="default_cpu"]');input.focus();input.value='17';const form=input.form;
 run("state.mode='live';renderLive()");

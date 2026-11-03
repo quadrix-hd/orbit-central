@@ -433,6 +433,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	if handled, err := s.alertRoutes(w, r, data); handled || err != nil {
 		return err
 	}
+	if handled, err := s.scheduleRoutes(w, r, data); handled || err != nil {
+		return err
+	}
 	if handled, err := s.settingsRoutes(w, r, data, session); handled || err != nil {
 		return err
 	}
@@ -632,7 +635,7 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		name = "index.html"
 	}
-	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "management.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "operations.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff", "inter-var.woff2": "font/woff2"}
+	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "management.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "operations.js": "text/javascript; charset=utf-8", "automation.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff", "inter-var.woff2": "font/woff2"}
 	mime, ok := allowed[name]
 	if !ok {
 		return problem("Nicht gefunden.", 404)
@@ -741,6 +744,10 @@ func (s *Server) connectionRead(w http.ResponseWriter, r *http.Request, c Connec
 			}
 			return jsonData(w, out, nil)
 		}
+	}
+	if len(parts) == 1 && parts[0] == "guest-history" {
+		data, err := s.guestHistory(r, c)
+		return jsonData(w, data, err)
 	}
 	if len(parts) == 1 && parts[0] == "rrd" {
 		data, err := s.rrd(r, c)

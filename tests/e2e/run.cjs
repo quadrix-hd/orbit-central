@@ -195,6 +195,54 @@ function totp(secret, at = Date.now()) {
     await page.waitForSelector('dialog svg.chart-svg path.chart-line', { timeout: 10000 });
     await page.click('dialog [data-cancel]');
   });
+  const openVM = async vmid => {
+    await page.evaluate(id => vmDetails(state.connections[0].id + ':' + id), vmid);
+    await page.waitForFunction(() => state.object && !state.object.loading, null, { timeout: 10000 });
+  };
+  await step('Tags bearbeiten und nach Tag filtern', async () => {
+    await openVM(100); await page.evaluate(() => { state.objectTab = 'summary'; render() });
+    await page.click('[data-edit-tags]'); await page.fill('#f-tags', 'prod, Web, e2e');
+    await page.click('#tag-form button.primary');
+    const op = await waitOp(o => o.vmid === 100 && o.action === 'tags');
+    expect(op.status === 'completed', 'tags ' + op.status + ' ' + JSON.stringify(op.events?.slice(-1)));
+    await page.evaluate(() => refresh(false));
+    await page.waitForFunction(() => state.resources.find(r => r.vmid === 100)?.tags === 'e2e;prod;web', null, { timeout: 10000 });
+    await page.evaluate(() => nav('vms')); await page.selectOption('#vm-tag-filter', 'e2e');
+    const names = await page.$$eval('[data-vm]', e => e.map(x => x.textContent));
+    expect(names.length === 1 && names[0] === 'web-01', 'tag filter ' + names);
+    await page.evaluate(() => { state.vmTag = ''; render() });
+  });
+  await step('Änderungsprotokoll zeigt Orbit-Aktionen und Proxmox-Tasks', async () => {
+    await openVM(100); await page.evaluate(() => { state.objectTab = 'history'; render() });
+    await page.waitForSelector('.history-panel tbody tr', { timeout: 10000 });
+    const kinds = await page.$$eval('.history-panel tbody tr td:nth-child(2)', e => [...new Set(e.map(x => x.textContent.trim()))]);
+    expect(kinds.includes('Orbit') && kinds.includes('Proxmox'), 'sources ' + kinds);
+    const users = await page.$$eval('.history-panel tbody tr td:nth-child(4)', e => e.map(x => x.textContent.trim()));
+    expect(users.includes('admin'), 'user column ' + users.slice(0, 5));
+  });
+  await step('Geplante Aktion anlegen und sofort ausführen (Snapshot per Tag)', async () => {
+    await page.evaluate(() => nav('schedules'));
+    await page.waitForSelector('[data-schedule-edit=""]', { timeout: 10000 });
+    await page.click('[data-schedule-edit=""]');
+    await page.fill('#f-name', 'E2E Snapshot'); await page.selectOption('#f-action', 'snapshot'); await page.fill('#f-keep', '2');
+    await page.check('input[name=target][value=tag]'); await page.fill('#f-tag', 'e2e'); await page.fill('#f-time', '03:15');
+    await page.click('.weekday-picker label:has(input[value="1"])');
+    await page.click('#schedule-form button.primary');
+    await page.waitForFunction(() => !modal.open && scheduleState().list.length === 1, null, { timeout: 8000 });
+    const sc = (await api('schedules')).data.schedules[0];
+    expect(sc.tag === 'e2e' && sc.keep === 2 && sc.days.join() === '1' && sc.next_run > Date.now() / 1000, 'schedule ' + JSON.stringify(sc));
+    await page.click('.row-actions summary'); await page.click('[data-schedule-run]'); await page.click('[data-confirm-run]');
+    await page.waitForSelector('dialog [data-open-op]', { timeout: 10000 });
+    const op = await waitOp(o => o.vmid === 100 && o.action === 'snapshot' && String(o.requested_by || '').startsWith('Zeitplan E2E Snapshot'));
+    expect(op.status === 'completed' && /^auto_/.test(op.args.snapname), 'snapshot ' + op.status + ' ' + op.args?.snapname);
+  });
+  await step('Berichte: CSV-Inventar und Kapazitätsbericht', async () => {
+    await page.evaluate(() => nav('reports')); await page.waitForSelector('[data-report="guests"]');
+    const csv = await page.evaluate(() => reportDefs.guests[2]());
+    expect(csv.includes('web-01') && csv.includes('e2e prod web') && csv.split('\n').length >= 5, 'csv ' + csv.slice(0, 200));
+    const html = await page.evaluate(() => capacityReportHTML());
+    expect(html.includes('Kapazitätsbericht') && html.includes('pve1') && html.includes('local-lvm'), 'report html');
+  });
   await step('Storage-, Netzwerk-, Datensicherungs- und Lifecycle-Seiten laden', async () => {
     for (const p of ['storage', 'network', 'protection', 'security', 'lifecycle', 'clusters', 'settings']) {
       await page.evaluate(x => nav(x), p); await sleep(900);
@@ -281,8 +329,8 @@ function totp(secret, at = Date.now()) {
     await page.waitForSelector('.prism-topbar', { timeout: 10000 });
     const role = await page.evaluate(() => state.user?.role);
     expect(role === 'operator', 'role ' + role);
-    const users = await api('users'), conn = await api('connections', 'POST', { name: 'x' }), del = await api('operations', 'POST', { action: 'delete' });
-    expect(users.status === 403 && conn.status === 403 && del.status === 403, `users ${users.status}, connections ${conn.status}, delete ${del.status}`);
+    const users = await api('users'), conn = await api('connections', 'POST', { name: 'x' }), del = await api('operations', 'POST', { action: 'delete' }), sched = await api('schedules', 'POST', { name: 'x' }), schedList = await api('schedules');
+    expect(users.status === 403 && conn.status === 403 && del.status === 403 && sched.status === 403 && schedList.status === 200, `users ${users.status}, connections ${conn.status}, delete ${del.status}, schedules ${sched.status}/${schedList.status}`);
     await page.evaluate(() => nav('settings'));
     expect(!(await page.$('[data-settings-nav="users"]')), 'users nav visible for operator');
     await actOnVM('mock-dc:102', 'shutdown');

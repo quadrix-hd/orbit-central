@@ -46,6 +46,7 @@ function bindOperations(){
  if(typeof bindSSO==='function')bindSSO();
  if(typeof bindBackupJobs==='function')bindBackupJobs();
  bindCharts();
+ if(typeof bindAutomation==='function')bindAutomation();
  $$('[data-host-metrics]').forEach(b=>b.onclick=()=>{const[cid,node]=b.dataset.hostMetrics.split('|');hostMetricsModal(cid,node)});
  $$('[data-alert-tab]').forEach(b=>b.onclick=()=>{state.alertTab=b.dataset.alertTab;render()});
  $$('[data-alert-filter]').forEach(b=>b.onclick=()=>{state.alertFilter=b.dataset.alertFilter;render()});
