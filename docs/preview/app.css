@@ -305,3 +305,120 @@ tr.alert-open.warning td:first-child{box-shadow:inset 3px 0 var(--warn)}
 .drs-balanced{display:flex;align-items:center;gap:8px;padding:14px 16px;border-top:1px solid var(--line);color:var(--ok)}
 .drs-balanced .icon{width:16px;height:16px}
 @media(max-width:760px){.drs-form{grid-template-columns:1fr}.rule-row{grid-template-columns:auto 1fr}.rule-params{grid-column:1/-1;justify-content:flex-start}}
+
+/* ==========================================================================
+   Slate theme (light + dark) · based on the ProxCenter brand colours
+   Slate #1E293B as primary, Orange #F97316 as accent. Everything below is
+   scoped to data-theme=slate / slate-dark, so removing this block or picking
+   another theme in the settings restores the previous look completely.
+   ========================================================================== */
+:root[data-theme=slate]{--bg:#f1f5f9;--panel:#fff;--panel2:#f8fafc;--line:#e2e8f0;--muted:#64748b;--text:#0f172a;--mint:#ea580c;--accent:#f97316;--accent-text:#c2410c;--primary:#1e293b;--primary-hover:#0f172a;--primary-text:#fff;--nav:#1e293b;--nav-text:#cbd5e1;--top:#0f172a;--accent-soft:#fff3e8;--ok:#16a34a;--warn:#d97706;--crit:#dc2626;--amber:#d97706;--red:#dc2626;--radius:8px;--radius-lg:12px;--shadow-1:0 1px 2px rgb(15 23 42 / .06),0 1px 3px rgb(15 23 42 / .06);--shadow-2:0 4px 12px rgb(15 23 42 / .08);--tile-icon-bg:#fff3e8;color-scheme:light}
+:root[data-theme=slate-dark]{--bg:#0b1120;--panel:#111a2e;--panel2:#162036;--line:#1f2b44;--muted:#94a3b8;--text:#e2e8f0;--mint:#fb923c;--accent:#f97316;--accent-text:#fdba74;--primary:#f97316;--primary-hover:#fb923c;--primary-text:#1a0e05;--nav:#0f172a;--nav-text:#cbd5e1;--top:#0a0f1c;--accent-soft:#2a1a10;--ok:#4ade80;--warn:#fbbf24;--crit:#f87171;--amber:#fbbf24;--red:#f87171;--radius:8px;--radius-lg:12px;--shadow-1:0 1px 2px rgb(0 0 0 / .35);--shadow-2:0 6px 18px rgb(0 0 0 / .4);--tile-icon-bg:#2a1a10;color-scheme:dark}
+
+/* Shell */
+:root:is([data-theme=slate],[data-theme=slate-dark]) body{background:var(--bg)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-topbar{background:var(--top);border-bottom:1px solid rgb(255 255 255 / .06)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .orbit-wordmark{color:#fff}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .orbit-wordmark span{color:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar{background:var(--nav);border-right:1px solid rgb(255 255 255 / .05)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav .navlabel{color:#64748b;opacity:1}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav button{color:var(--nav-text);border-radius:8px}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav button .icon{color:#94a3b8}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav button:hover:not(:disabled){background:rgb(255 255 255 / .06);color:#fff}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav button.active,:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav button.active:hover:not(:disabled){background:rgb(249 115 22 / .14);color:#fff;box-shadow:inset 3px 0 var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav button.active .icon{color:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .sidebar-footer{border-top:1px solid rgb(255 255 255 / .06);color:#94a3b8}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .nav-badge{background:var(--accent);color:#fff}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .topbar-alerts.has-alerts span{background:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .topbar-demo{border:1px solid rgb(249 115 22 / .5);color:#fdba74;background:transparent}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .page-titlebar{background:var(--panel);border-bottom:1px solid var(--line)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .contextbar{border-bottom-color:var(--line)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .task-dock{background:var(--panel);border-top-color:var(--line)}
+
+/* Controls */
+:root:is([data-theme=slate],[data-theme=slate-dark]) button{border-radius:8px}
+:root:is([data-theme=slate],[data-theme=slate-dark]) :where(.page,dialog) button:not(.primary,.text-button,.chip,.vm-link,[data-object-tab],[data-jobs-tab],[data-alert-tab],[data-vm-sort]):not(.dashboard-tabs button,.tabs button,.settings-nav button,.action-menu-list button){border-color:var(--line);background:var(--panel);color:var(--text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) :where(.page,dialog) button:not(.primary,.text-button,.chip,.vm-link,[data-vm-sort]):not(.dashboard-tabs button,.tabs button,.settings-nav button,.action-menu-list button,.object-tabs button):hover:not(:disabled){border-color:color-mix(in srgb,var(--muted) 45%,var(--line));background:var(--panel2)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) button.primary{background:var(--primary);border-color:var(--primary);color:var(--primary-text);font-weight:600}
+:root:is([data-theme=slate],[data-theme=slate-dark]) button.primary:hover:not(:disabled){background:var(--primary-hover);border-color:var(--primary-hover);color:var(--primary-text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) input,:root:is([data-theme=slate],[data-theme=slate-dark]) select,:root:is([data-theme=slate],[data-theme=slate-dark]) textarea{border-radius:8px;border-color:var(--line);background:var(--panel);color:var(--text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) :is(button,input,select,textarea):focus-visible{box-shadow:0 0 0 3px rgb(249 115 22 / .3);border-color:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .vm-link,:root:is([data-theme=slate],[data-theme=slate-dark]) .text-button{color:var(--accent-text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .chip{border-radius:999px}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .chip.selected{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .dashboard-tabs button.selected,:root:is([data-theme=slate],[data-theme=slate-dark]) .tabs button.selected,:root:is([data-theme=slate],[data-theme=slate-dark]) .object-tabs button.selected{color:var(--accent-text);border-color:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .settings-nav button.selected{background:var(--accent-soft);color:var(--accent-text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .switch input:checked+span{background:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .live-badge{border-radius:999px}
+
+/* Tiles and cards */
+:root:is([data-theme=slate],[data-theme=slate-dark]) :is(.panel,.settings-card,.module-panel,.channel-card,.appcard){border-radius:var(--radius-lg);border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow-1)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stats{gap:16px}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat,:root:is([data-theme=slate],[data-theme=slate-dark]) .stat:nth-child(n){position:relative;display:grid;grid-template-columns:1fr auto;grid-template-areas:"label icon" "value icon" "bar bar" "foot foot";column-gap:12px;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-1);transition:box-shadow .15s,transform .15s}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat:hover{box-shadow:var(--shadow-2);transform:translateY(-1px)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat-top{display:contents}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat-top{font-size:12.5px;font-weight:500;color:var(--muted)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat-top>.icon,:root:is([data-theme=slate],[data-theme=slate-dark]) .stat:nth-child(n) .stat-top>.icon{grid-area:icon;align-self:start;width:42px;height:42px;padding:10px;border-radius:10px;background:var(--tile-icon-bg);color:var(--accent);box-sizing:border-box}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat-value{grid-area:value;font-size:28px;font-weight:700;letter-spacing:-.5px;margin:6px 0 12px;color:var(--text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat .usage-track{grid-area:bar;height:6px;margin:0 0 10px}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat-foot{grid-area:foot;font-size:12px;color:var(--muted)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat.is-high .stat-value{color:var(--warn)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .stat.is-crit .stat-value{color:var(--crit)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .usage-track{background:color-mix(in srgb,var(--muted) 18%,transparent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .usage-track i,:root:is([data-theme=slate],[data-theme=slate-dark]) .meter i,:root:is([data-theme=slate],[data-theme=slate-dark]) .mini-bar i{background:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .usage-track i.high{background:var(--warn)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .usage-track i.crit{background:var(--crit)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .table-toolbar{padding:14px 18px}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .table-toolbar h2,:root:is([data-theme=slate],[data-theme=slate-dark]) .panel h2{font-size:14px;font-weight:650}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .table-symbol{border-radius:8px;background:var(--panel2);border-color:var(--line);color:var(--muted)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .drs-node{border-radius:10px}
+
+/* Tables */
+:root:is([data-theme=slate],[data-theme=slate-dark]) th{background:var(--panel2);color:var(--muted);border-bottom:1px solid var(--line)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) td{border-bottom-color:var(--line);color:var(--text)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) tbody tr:hover td{background:color-mix(in srgb,var(--accent) 5%,transparent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) tbody tr.selected td{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) th[aria-sort=ascending] .sort-mark,:root:is([data-theme=slate],[data-theme=slate-dark]) th[aria-sort=descending] .sort-mark{color:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .type-tag{border-radius:6px}
+
+/* Status pills */
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag{border-radius:999px;font-weight:500;background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:color-mix(in srgb,var(--ok) 30%,transparent);color:color-mix(in srgb,var(--ok) 80%,var(--text))}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag .dot{background:var(--ok)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag.neutral{background:color-mix(in srgb,var(--muted) 12%,transparent);border-color:color-mix(in srgb,var(--muted) 28%,transparent);color:var(--muted)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag.neutral .dot{background:var(--muted)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border-color:color-mix(in srgb,var(--warn) 32%,transparent);color:color-mix(in srgb,var(--warn) 75%,var(--text))}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag.warn .dot{background:var(--warn)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag.fail{background:color-mix(in srgb,var(--crit) 12%,transparent);border-color:color-mix(in srgb,var(--crit) 30%,transparent);color:color-mix(in srgb,var(--crit) 80%,var(--text))}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .status-tag.fail .dot{background:var(--crit)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .hint{border-radius:10px}
+:root[data-theme=slate-dark] .hint.error{background:#3a1518;color:#fecaca;border-color:#5b2125}
+:root[data-theme=slate-dark] .hint.warn{background:#3a2a10;color:#fde68a;border-color:#5c4415}
+
+/* Dialogs */
+:root:is([data-theme=slate],[data-theme=slate-dark]) dialog{border-radius:14px;background:var(--panel);color:var(--text);border:1px solid var(--line);box-shadow:0 24px 60px rgb(15 23 42 / .35)}
+:root[data-theme=slate-dark] dialog::backdrop{background:rgb(2 6 23 / .7)}
+:root[data-theme=slate-dark] .task-log{background:#050912}
+:root[data-theme=slate-dark] .action-menu-list{box-shadow:0 12px 30px rgb(0 0 0 / .5)}
+
+/* Theme picker swatches */
+.theme-swatch.slate{background:#f1f5f9}
+.theme-swatch.slate i:first-child{background:#0f172a}
+.theme-swatch.slate i:nth-child(2){background:#1e293b}
+.theme-swatch.slate i:last-child{background:#fff;border-bottom:3px solid #f97316}
+.theme-swatch.slate-dark{background:#0b1120}
+.theme-swatch.slate-dark i:first-child{background:#0a0f1c}
+.theme-swatch.slate-dark i:nth-child(2){background:#0f172a}
+.theme-swatch.slate-dark i:last-child{background:#111a2e;border-bottom:3px solid #f97316}
+@media(prefers-reduced-motion:reduce){:root:is([data-theme=slate],[data-theme=slate-dark]) .stat{transition:none}:root:is([data-theme=slate],[data-theme=slate-dark]) .stat:hover{transform:none}}
+/* Legacy components with fixed light colours */
+:root:is([data-theme=slate],[data-theme=slate-dark]) .health-number{background:transparent}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .health-counters,:root:is([data-theme=slate],[data-theme=slate-dark]) .health-counters>*,:root:is([data-theme=slate],[data-theme=slate-dark]) .appcard-bottom{border-color:var(--line)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) :is(.notice-level,.tag,.badge){background:var(--panel2);border-color:var(--line);color:var(--muted)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .badge{background:color-mix(in srgb,var(--ok) 12%,transparent);border-color:color-mix(in srgb,var(--ok) 30%,transparent);color:color-mix(in srgb,var(--ok) 80%,var(--text))}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .activity-symbol,:root:is([data-theme=slate],[data-theme=slate-dark]) .app-logo{background:var(--tile-icon-bg);border-color:var(--line);color:var(--accent)}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .dashboard-tabs button,:root:is([data-theme=slate],[data-theme=slate-dark]) .object-tabs button{background:transparent}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-topbar button{background:transparent;border:0;color:#cbd5e1}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-topbar button:hover:not(:disabled){background:rgb(255 255 255 / .08);color:#fff}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .prism-sidebar nav button:not(.active){background:transparent}
+:root:is([data-theme=slate],[data-theme=slate-dark]) .mini-bar+.mini-bar i,:root:is([data-theme=slate],[data-theme=slate-dark]) .capacity-list>div:nth-child(2) .meter i,:root:is([data-theme=slate],[data-theme=slate-dark]) .legend span:nth-child(2) i{background:#64748b}
+/* ===== end Slate theme ===== */
