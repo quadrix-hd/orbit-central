@@ -754,3 +754,28 @@ dialog.modal-wide{width:min(1180px,96vw);max-width:96vw}
 .console-footer-actions{display:inline-flex;gap:8px;align-items:center}
 #paste-form textarea{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
 .panel-note{margin:-4px 16px 10px;font-size:12.5px}
+
+/* Nutanix Prism Element navigation: no sidebar, area menu in the top bar.
+   Switch back per user menu ("Seitenleiste verwenden"). */
+.layout-menu .prism-sidebar,.layout-menu .topbar-menu{display:none!important}
+.prism-layout.layout-menu{--side:0px}
+.layout-menu .prism-main{margin-left:0!important}
+.layout-menu .task-dock{left:0!important}
+.page-menu{position:relative}
+.page-menu>summary{list-style:none;display:flex;align-items:center;gap:9px;height:38px;padding:0 12px;border-radius:8px;background:rgb(255 255 255 / .07);border:1px solid rgb(255 255 255 / .08);cursor:pointer;white-space:nowrap;color:#f3f4f6;font-weight:600}
+.page-menu>summary::-webkit-details-marker{display:none}
+.page-menu>summary .icon{width:17px;height:17px;color:var(--accent)}
+.page-menu>summary:hover{background:rgb(255 255 255 / .12)}
+.page-menu[open]>summary{border-color:var(--accent);background:rgb(255 255 255 / .12)}
+.page-menu-panel{position:absolute;top:calc(100% + 6px);left:0;display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:4px 10px;width:min(860px,calc(100vw - 24px));padding:14px;border-radius:12px;background:#141821;border:1px solid #2a3140;box-shadow:0 22px 50px rgb(0 0 0 / .45);z-index:60}
+.pm-group{display:grid;align-content:start;gap:2px;padding:4px}
+.pm-head{display:flex;align-items:center;gap:7px;padding:4px 8px 6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;border-bottom:1px solid #262d3a;margin-bottom:4px}
+.pm-head .icon{width:14px;height:14px;color:var(--accent)}
+.page-menu-panel button{display:flex!important;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:34px!important;padding:6px 10px!important;border:0!important;border-radius:7px!important;background:transparent!important;color:#e5e7eb!important;text-align:left;font-size:13.5px;font-weight:500}
+.page-menu-panel button:hover{background:rgb(255 255 255 / .07)!important}
+.page-menu-panel button.active{background:color-mix(in srgb,var(--accent) 22%,transparent)!important;color:#fff!important;font-weight:600}
+.page-menu-panel .nav-badge{position:static;margin-left:auto}
+@media(max-width:1100px){.page-menu-panel{grid-template-columns:repeat(3,minmax(160px,1fr))}}
+@media(max-width:760px){.page-menu-panel{position:fixed;top:var(--bar-h);left:8px;right:8px;width:auto;grid-template-columns:1fr 1fr;max-height:calc(100vh - var(--bar-h) - 16px);overflow:auto}.page-menu>summary span{max-width:120px;overflow:hidden;text-overflow:ellipsis}}
+@media(max-width:480px){.page-menu-panel{grid-template-columns:1fr}}
+.table-wrap:has(details.action-menu[open]),.panel:has(details.action-menu[open]){overflow:visible}
