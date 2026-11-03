@@ -33,6 +33,7 @@ for(const markup of [element('#modal').innerHTML,run("openBlueprintForm([{vmid:9
 }
 console.log('Frontend: 12 views, filters, totals, HTML escaping, configurator and empty live state passed.');
 
+run("openModal('<img src=x onerror=alert(1)>','Test','Text')");assert.ok(!element('#modal').innerHTML.includes('<img src=x'));run('closeModal(true)');
 (async()=>{
   run("state.mode='demo';state.authenticated=true;loadDemo();vmDetails('demo:105')");
   for(const action of ['disk_add','disk_resize','nic','metadata','iso','delete']){
