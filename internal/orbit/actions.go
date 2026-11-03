@@ -470,8 +470,14 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 		a["target"] = target
 		if kind == "qemu" {
 			a["online"] = boolInt(vm["status"] == "running")
+			if truth(d["with_local_disks"]) {
+				a["with-local-disks"] = 1
+			}
 		} else if vm["status"] != "stopped" {
-			fail("LXC-Migration benötigt einen gestoppten Container.")
+			if d["restart"] != true {
+				fail("LXC-Migration benötigt einen gestoppten Container oder eine Neustart-Migration.")
+			}
+			a["restart"] = 1
 		}
 	case "configure":
 		if vm["status"] != "stopped" {
@@ -877,6 +883,7 @@ func (s *Server) RunWorkers(ctx context.Context) {
 	go func() { defer s.workers.Done(); s.Catalog.Run(ctx) }()
 	s.RunAlerts(ctx)
 	s.RunSchedules(ctx)
+	s.RunMaintenance(ctx)
 }
 
 func (s *Server) WaitWorkers() { s.workers.Wait() }

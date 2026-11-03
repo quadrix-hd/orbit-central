@@ -503,7 +503,7 @@ func (s *Server) guestHistory(r *http.Request, c Connection) (any, error) {
 		out = []doc{}
 		for _, table := range []string{"operations", "jobs"} {
 			for _, op := range s.allDocs(table) {
-				args := configOf(op["args"])
+				args := asDoc(op["args"])
 				if op["connection_id"] != c.ID || (int(num(op["vmid"])) != id && int(num(args["newid"])) != id && int(num(args["vmid"])) != id) {
 					continue
 				}
@@ -515,7 +515,7 @@ func (s *Server) guestHistory(r *http.Request, c Connection) (any, error) {
 				}
 				msg := ""
 				if ev := anyList(op["events"]); len(ev) > 0 {
-					msg = str(configOf(ev[len(ev)-1])["message"])
+					msg = str(asDoc(ev[len(ev)-1])["message"])
 				}
 				out = append(out, doc{"source": "orbit", "at": op["created"], "action": op["action"], "status": op["status"], "user": op["requested_by"], "node": op["node"], "args": detail, "message": msg, "id": op["id"]})
 			}
@@ -541,4 +541,12 @@ func (s *Server) guestHistory(r *http.Request, c Connection) (any, error) {
 		}
 	})
 	return out, err
+}
+
+// asDoc returns v as an object, or an empty one for anything else.
+func asDoc(v any) doc {
+	if d, ok := v.(map[string]any); ok {
+		return d
+	}
+	return doc{}
 }

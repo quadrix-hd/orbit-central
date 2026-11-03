@@ -390,7 +390,7 @@ func (s *Server) connectionFindings(ctx context.Context, c Connection, cfg alert
 		case "node":
 			name := str(r["node"])
 			if r["status"] != "online" {
-				if cfg.Rules["node_offline"].Enabled {
+				if cfg.Rules["node_offline"].Enabled && !s.inMaintenance(c.ID, name) {
 					out = append(out, finding{id: alertID("node_offline", c.ID, name), rule: "node_offline", severity: "critical", kind: "state", connection: c.ID, object: name, title: "Host offline: " + name, message: "Proxmox meldet den Host als " + defaultText(str(r["status"]), "unbekannt") + "."})
 				}
 				continue

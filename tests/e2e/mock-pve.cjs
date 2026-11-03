@@ -10,6 +10,7 @@ const GiB = 1073741824;
 const nodes = { pve1: '127.0.0.1', pve2: '127.0.0.2', pve3: '127.0.0.3' };
 const now = () => Math.floor(Date.now() / 1000);
 let upidSeq = 0x1000;
+const boot = { pve1: now() - 86400 * 12, pve2: now() - 86400 * 12, pve3: now() - 86400 * 12 }, offline = new Set();
 const state = {
   guests: {
     100: { type: 'qemu', node: 'pve1', name: 'web-01', status: 'running', maxcpu: 2, maxmem: 4 * GiB, mem: 2 * GiB, cpu: 0.12, maxdisk: 32 * GiB, template: 0, tags: 'prod', config: { name: 'web-01', cores: 2, sockets: 1, memory: 4096, scsi0: 'local-lvm:vm-100-disk-0,size=32G', net0: 'virtio=BC:24:11:00:00:01,bridge=vmbr0', ide2: 'none,media=cdrom', boot: 'order=scsi0', ostype: 'l26', digest: 'd100' } },
@@ -39,7 +40,7 @@ function resources(type) {
   const out = [];
   if (!type || type === 'node') for (const [node] of Object.entries(nodes)) {
     const guests = Object.values(state.guests).filter(g => g.node === node && g.status === 'running');
-    out.push({ id: 'node/' + node, type: 'node', node, status: 'online', cpu: Math.min(0.95, 0.05 + guests.reduce((s, g) => s + g.cpu * g.maxcpu, 0) / 32), maxcpu: 32, mem: 8 * GiB + guests.reduce((s, g) => s + g.mem, 0), maxmem: 128 * GiB, disk: 20 * GiB, maxdisk: 100 * GiB, uptime: 86400 * 12 });
+    out.push({ id: 'node/' + node, type: 'node', node, status: offline.has(node) ? 'offline' : 'online', cpu: Math.min(0.95, 0.05 + guests.reduce((s, g) => s + g.cpu * g.maxcpu, 0) / 32), maxcpu: 32, mem: 8 * GiB + guests.reduce((s, g) => s + g.mem, 0), maxmem: 128 * GiB, disk: 20 * GiB, maxdisk: 100 * GiB, uptime: 86400 * 12 });
   }
   if (!type || type === 'vm') for (const [vmid, g] of Object.entries(state.guests)) out.push({ id: `${g.type}/${vmid}`, type: g.type, vmid: +vmid, node: g.node, name: g.name, status: g.status, cpu: g.status === 'running' ? g.cpu : 0, maxcpu: g.maxcpu, mem: g.status === 'running' ? g.mem : 0, maxmem: g.maxmem, disk: 0, maxdisk: g.maxdisk, template: g.template, tags: g.tags, uptime: g.status === 'running' ? 3600 : 0 });
   if (!type || type === 'storage') for (const node of Object.keys(nodes)) {
@@ -101,11 +102,17 @@ function route(local, method, p, q, body) {
   if (p.startsWith('/cluster/sdn')) return [];
   if (p === '/storage') return storageList();
   if ((m = p.match(/^\/storage\/([^/]+)$/))) { const s = storageList().find(x => x.storage === m[1]); if (!s) throw { status: 404, message: 'storage not found' }; return s }
-  if (p === '/nodes') return Object.keys(nodes).map(node => ({ node, status: 'online', cpu: 0.2, maxcpu: 32, mem: 40 * GiB, maxmem: 128 * GiB, uptime: 86400, level: '' }));
+  if (p === '/nodes') return Object.keys(nodes).map(node => ({ node, status: offline.has(node) ? 'offline' : 'online', cpu: 0.2, maxcpu: 32, mem: 40 * GiB, maxmem: 128 * GiB, uptime: now() - boot[node], level: '' }));
   if (!(m = p.match(/^\/nodes\/([^/]+)(\/.*)?$/))) return undefined;
   const node = m[1], rest = m[2] || '';
   if (!nodes[node]) throw { status: 400, message: `no such node '${node}'` };
-  if (rest === '/status') return { cpu: 0.2, memory: { total: 128 * GiB, used: 40 * GiB, free: 88 * GiB }, uptime: 86400, pveversion: 'pve-manager/9.0.10', kversion: 'Linux 6.14', cpuinfo: { cpus: 32, model: 'Mock CPU' }, swap: { total: 8 * GiB, used: 0 }, rootfs: { total: 100 * GiB, used: 20 * GiB } };
+  if (offline.has(node)) throw { status: 595, message: `no route to host` };
+  if (rest === '/status' && method === 'POST') {
+    if (body.command !== 'reboot') throw { status: 400, message: 'unsupported' };
+    if (Object.values(state.guests).some(g => g.node === node && g.status === 'running')) throw { status: 500, message: 'guests running' };
+    offline.add(node); setTimeout(() => { offline.delete(node); boot[node] = now() }, 3000); return null;
+  }
+  if (rest === '/status') return { cpu: 0.2, memory: { total: 128 * GiB, used: 40 * GiB, free: 88 * GiB }, uptime: now() - boot[node], pveversion: 'pve-manager/9.0.10', kversion: 'Linux 6.14', cpuinfo: { cpus: 32, model: 'Mock CPU' }, swap: { total: 8 * GiB, used: 0 }, rootfs: { total: 100 * GiB, used: 20 * GiB } };
   if (rest === '/rrddata') return rrd(q.get('timeframe'));
   if (rest === '/storage') return storageList();
   if (rest === '/network') return [{ iface: 'vmbr0', type: 'bridge', active: 1, autostart: 1, bridge_ports: 'eno1', cidr: '10.0.0.11/24', method: 'static', families: ['inet'] }, { iface: 'vmbr1', type: 'bridge', active: 1, autostart: 1, bridge_ports: 'eno2', method: 'manual', families: ['inet'] }, { iface: 'eno1', type: 'eth', active: 1 }];
@@ -180,6 +187,7 @@ function route(local, method, p, q, body) {
       state.guests[nid].config.name = state.guests[nid].name; return task(node, prefix + 'clone', id);
     }
     if (sub === '/template') { if (g.status !== 'stopped') throw { status: 500, message: 'VM is running' }; g.template = 1; g.config.template = 1; return kind === 'qemu' ? task(node, 'qmtemplate', id) : null }
+    if (sub === '/migrate' && method === 'GET') return { running: g.status === 'running' ? 1 : 0, allowed_nodes: Object.keys(nodes).filter(n => n !== node && !offline.has(n)), not_allowed_nodes: {}, local_disks: [], local_resources: [] };
     if (sub === '/migrate') { if (!nodes[body.target]) throw { status: 400, message: 'invalid target' }; g.node = body.target; return task(node, kind === 'qemu' ? 'qmigrate' : 'vzmigrate', id) }
     if (sub === '/resize') return kind === 'qemu' ? null : task(node, 'resize', id);
     if (sub === '/rrddata') return rrd(q.get('timeframe'));

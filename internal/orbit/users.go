@@ -179,7 +179,7 @@ func (s *Server) tokenSession(r *http.Request) (*session, error) {
 
 // --- Authorization ---------------------------------------------------------------
 
-var adminOnlyPrefixes = []string{"/api/connections", "/api/settings", "/api/catalog/source", "/api/catalog/config", "/api/catalog/sync", "/api/system/", "/api/alerts/config", "/api/alerts/test", "/api/users", "/api/blueprints", "/api/audit", "/api/schedules"}
+var adminOnlyPrefixes = []string{"/api/connections", "/api/settings", "/api/catalog/source", "/api/catalog/config", "/api/catalog/sync", "/api/system/", "/api/alerts/config", "/api/alerts/test", "/api/users", "/api/blueprints", "/api/audit", "/api/schedules", "/api/maintenance"}
 var selfServicePaths = []string{"/api/logout", "/api/account/password", "/api/account/sessions", "/api/account/totp", "/api/account/tokens"}
 var adminOnlyActions = map[string]bool{"delete": true, "infrastructure": true, "storage_config": true, "template": true}
 

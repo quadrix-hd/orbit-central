@@ -31,6 +31,7 @@ type Server struct {
 	PVE            *Proxmox
 	Origin, Static string
 	mu             sync.Mutex
+	maintMu        sync.Mutex
 	attempts       map[string][]time.Time
 	Catalog        *Catalog
 	Console        *Console
@@ -436,6 +437,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	if handled, err := s.scheduleRoutes(w, r, data); handled || err != nil {
 		return err
 	}
+	if handled, err := s.maintenanceRoutes(w, r, data); handled || err != nil {
+		return err
+	}
 	if handled, err := s.settingsRoutes(w, r, data, session); handled || err != nil {
 		return err
 	}
@@ -744,6 +748,10 @@ func (s *Server) connectionRead(w http.ResponseWriter, r *http.Request, c Connec
 			}
 			return jsonData(w, out, nil)
 		}
+	}
+	if len(parts) == 1 && parts[0] == "updates" {
+		data, err := s.nodeUpdates(r, c)
+		return jsonData(w, data, err)
 	}
 	if len(parts) == 1 && parts[0] == "guest-history" {
 		data, err := s.guestHistory(r, c)

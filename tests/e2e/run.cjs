@@ -236,6 +236,42 @@ function totp(secret, at = Date.now()) {
     const op = await waitOp(o => o.vmid === 100 && o.action === 'snapshot' && String(o.requested_by || '').startsWith('Zeitplan E2E Snapshot'));
     expect(op.status === 'completed' && /^auto_/.test(op.args.snapname), 'snapshot ' + op.status + ' ' + op.args?.snapname);
   });
+  const guestsOn = async node => ((await api('connections/' + (await page.evaluate(() => state.connections[0].id)) + '/inventory')).data || []).filter(r => ['qemu', 'lxc'].includes(r.type) && r.node === node && r.status === 'running').map(r => r.name).sort();
+  const waitMaint = async (pred, timeout = 60000) => {
+    const until = Date.now() + timeout;
+    while (Date.now() < until) { const items = (await api('maintenance')).data.items; if (pred(items)) return items; await sleep(700) }
+    throw new Error('maintenance state not reached: ' + JSON.stringify((await api('maintenance')).data.items).slice(0, 400));
+  };
+  await step('Wartungsmodus: Host evakuieren und Gäste zurückholen', async () => {
+    const before = await guestsOn('pve3');
+    expect(before.length >= 2, 'pve3 guests ' + before);
+    await page.evaluate(() => nav('maintenance'));
+    await page.waitForSelector('tr:has-text("pve3") .row-actions summary', { timeout: 10000 });
+    await page.click('tr:has-text("pve3") .row-actions summary'); await page.click('[data-maint-enter$="|pve3"]');
+    await page.waitForSelector('#maint-form', { timeout: 10000 });
+    await page.check('#maint-form [name=lxc_restart]'); await page.waitForSelector('#maint-form', { timeout: 10000 }); await sleep(500);
+    await page.fill('#f-note', 'E2E'); await page.click('#maint-form button.primary');
+    await waitMaint(items => items.some(d => d.node === 'pve3' && d.state === 'active'));
+    expect(!(await guestsOn('pve3')).length, 'pve3 still runs ' + (await guestsOn('pve3')));
+    await page.evaluate(() => loadMaintenance(true)); await sleep(400);
+    await page.click('tr:has-text("pve3") .row-actions summary'); await page.click('[data-maint-exit$="|pve3"]');
+    await page.click('#maint-exit button.primary');
+    await waitMaint(items => !items.some(d => d.node === 'pve3'));
+    const after = await guestsOn('pve3');
+    expect(JSON.stringify(after) === JSON.stringify(before), `guests back ${after} vs ${before}`);
+  });
+  await step('Rolling-Neustart eines Hosts mit Evakuierung', async () => {
+    await page.evaluate(() => loadMaintenance(true)); await sleep(300);
+    await page.click('[data-rolling-start]');
+    for (const n of ['pve1', 'pve3']) await page.uncheck(`#rolling-form [name=node][value=${n}]`);
+    await page.check('#rolling-form [name=acknowledge]'); await page.click('#rolling-form button.primary');
+    const items = await waitMaint(items => items.some(d => d.kind === 'rolling' && ['done', 'paused'].includes(d.state)), 90000);
+    const r = items.find(d => d.kind === 'rolling');
+    expect(r.state === 'done', 'rolling ' + r.state + ' ' + r.error);
+    expect(r.events.some(e => /wieder online/.test(e.message)), 'no reboot seen');
+    await page.evaluate(() => loadMaintenance(true)); await sleep(300);
+    await page.click('[data-rolling^="dismiss|"]'); await waitMaint(items => !items.length, 10000);
+  });
   await step('Berichte: CSV-Inventar und Kapazitätsbericht', async () => {
     await page.evaluate(() => nav('reports')); await page.waitForSelector('[data-report="guests"]');
     const csv = await page.evaluate(() => reportDefs.guests[2]());

@@ -725,3 +725,31 @@ button.tag-chip.as-button:hover{filter:brightness(.96)}
 @media(max-width:700px){.report-hero{flex-direction:column;align-items:flex-start}}
 #schedule-form [hidden],#tag-form [hidden]{display:none!important}
 .row-actions .action-menu{display:inline-block;text-align:left}
+/* Maintenance & updates */
+:root .status-tag.maint,:root[data-theme] .status-tag.maint{background:color-mix(in srgb,#7c3aed 12%,transparent);color:#6d28d9;border-color:color-mix(in srgb,#7c3aed 30%,transparent)}
+:root:is([data-theme=slate-dark],[data-theme=dusk]) .status-tag.maint.maint-tag{background:color-mix(in srgb,#8b5cf6 22%,transparent);color:#c4b5fd}
+.status-tag.maint .icon{width:12px;height:12px}
+.maint-tag{margin-left:6px}
+td>.maint-tag:first-child,.maint-open .maint-tag{margin-left:0}
+.maint-open{padding:0}
+.maint-cluster{margin-bottom:14px}
+.maint-note{font-size:12px;margin:8px 2px}
+.rolling{margin:0 16px 14px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--accent,#ea580c) 4%,var(--panel))}
+.rolling.paused{border-color:color-mix(in srgb,var(--danger,#dc2626) 40%,var(--line))}
+.rolling-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.rolling-steps{display:flex;gap:8px;list-style:none;margin:12px 0;padding:0;flex-wrap:wrap}
+.rolling-steps li{display:grid;gap:1px;min-width:120px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel)}
+.rolling-steps li small{color:var(--muted);font-size:11.5px}
+.rolling-steps li.done{border-color:color-mix(in srgb,#16a34a 40%,var(--line))}
+.rolling-steps li.done small{color:#16a34a}
+.rolling-steps li.current{border-color:var(--accent,#ea580c);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent,#ea580c) 18%,transparent)}
+.rolling-steps li.current small{color:var(--accent,#ea580c);font-weight:600}
+.rolling-log{margin:6px 0}
+.rolling-log summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
+.rolling-log ul{margin:6px 0 0;padding-left:16px;font-size:12.5px;display:grid;gap:3px}
+.rolling-actions{display:flex;gap:8px;justify-content:flex-end}
+.rolling-pick{display:grid;gap:6px;margin:6px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+dialog.modal-wide{width:min(1180px,96vw);max-width:96vw}
+.shell-screen{height:min(62vh,620px);min-height:360px}
+.console-footer-actions{display:inline-flex;gap:8px;align-items:center}
+#paste-form textarea{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
