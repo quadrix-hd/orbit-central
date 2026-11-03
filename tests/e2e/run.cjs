@@ -247,7 +247,9 @@ function totp(secret, at = Date.now()) {
     expect(before.length >= 2, 'pve3 guests ' + before);
     await page.evaluate(() => nav('maintenance'));
     await page.waitForSelector('tr:has-text("pve3") .row-actions summary', { timeout: 10000 });
-    await page.click('tr:has-text("pve3") .row-actions summary'); await page.click('[data-maint-enter$="|pve3"]');
+    await page.click('tr:has-text("pve3") .row-actions summary'); await sleep(2500);
+    expect(await page.$eval('tr:has-text("pve3") details.action-menu', d => d.open), 'action menu closed by live update');
+    await page.click('[data-maint-enter$="|pve3"]');
     await page.waitForSelector('#maint-form', { timeout: 10000 });
     await page.check('#maint-form [name=lxc_restart]'); await page.waitForSelector('#maint-form', { timeout: 10000 }); await sleep(500);
     await page.fill('#f-note', 'E2E'); await page.click('#maint-form button.primary');
