@@ -407,6 +407,11 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	if handled, err := s.userRoutes(w, r, data, session); handled || err != nil {
 		return err
 	}
+	if strings.HasPrefix(path, "/api/connections/") {
+		if handled, err := s.backupJobRoutes(w, r, data); handled || err != nil {
+			return err
+		}
+	}
 	if path == "/api/logout" && method == "POST" {
 		if _, err = s.Store.DB.Exec("DELETE FROM sessions WHERE id=?", session.ID); err != nil {
 			return err

@@ -194,6 +194,18 @@ function totp(secret, at = Date.now()) {
       if (errs.length) throw new Error(p + ': ' + errs[0]);
     }
   });
+  await step('Backup-Zeitplan anlegen (Live)', async () => {
+    await page.evaluate(() => nav('protection'));
+    await page.waitForSelector('[data-backup-job-edit$="|"]', { timeout: 10000 });
+    await page.click('[data-backup-job-edit$="|"]');
+    await page.selectOption('#f-preset', 'sun 03:00'); await page.check('input[name=selection][value=vmids]'); await page.fill('#f-vmids', '100, 101');
+    await page.fill('input[name="keep-weekly"]', '8');
+    await page.click('#backup-job-form button.primary');
+    await page.waitForFunction(() => !modal.open, null, { timeout: 8000 });
+    const jobs = (await api('connections/' + await page.evaluate(() => state.connections[0].id) + '/backup-jobs')).data;
+    const job = jobs.find(j => j.schedule === 'sun 03:00');
+    expect(job && job.vmid === '100,101' && /keep-weekly=8/.test(job['prune-backups']), 'job ' + JSON.stringify(jobs));
+  });
   await step('Benutzer anlegen (Operator) über die Oberfläche', async () => {
     await page.evaluate(() => { state.settingsTab = 'users'; nav('settings') });
     await page.waitForSelector('[data-user-edit=""]', { timeout: 8000 });

@@ -645,3 +645,12 @@ details[open]>summary .chev{transform:rotate(-135deg) translate(-2px,-2px)}
 .sso-button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--text);text-decoration:none;font-weight:600}
 .sso-button:hover{background:var(--panel2)}
 .sso-button .icon{width:16px;height:16px}
+
+.segmented{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}
+.segmented label{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:13px;margin:0}
+.segmented label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent-text)}
+.keep-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:6px 0 14px}
+.keep-grid label{display:grid;gap:4px;font-size:12px;color:var(--muted);margin:0}
+.keep-grid input{min-height:34px}
+@media(max-width:700px){.keep-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.data-table td small.muted{display:block}
