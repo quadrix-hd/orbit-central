@@ -742,6 +742,10 @@ func (s *Server) connectionRead(w http.ResponseWriter, r *http.Request, c Connec
 			return jsonData(w, out, nil)
 		}
 	}
+	if len(parts) == 1 && parts[0] == "rrd" {
+		data, err := s.rrd(r, c)
+		return jsonData(w, data, err)
+	}
 	if len(parts) == 1 && parts[0] == "tasks" {
 		data, err := s.taskList(r, c)
 		return jsonData(w, data, err)

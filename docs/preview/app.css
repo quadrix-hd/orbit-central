@@ -661,3 +661,28 @@ details[open]>summary .chev{transform:rotate(-135deg) translate(-2px,-2px)}
 .upload-progress{display:grid;gap:4px;margin:8px 0}
 .upload-progress .usage-track{height:8px}
 td.volid{font:12px ui-monospace,Menlo,Consolas,monospace;word-break:break-all;white-space:normal!important}
+
+/* History charts ----------------------------------------------------------- */
+:root{--series-1:#ea580c;--series-2:#2563eb}
+:root:is([data-theme=slate-dark],[data-theme=dusk]){--series-2:#3b82f6}
+.metrics-panel .table-toolbar{flex-wrap:wrap}
+.chart-grid-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px;padding:4px 16px 16px}
+.chart-card{position:relative;margin:0;padding:12px 14px 8px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.chart-card figcaption{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:4px;flex-wrap:wrap}
+.chart-card figcaption b{font-size:13px}
+.chart-card figcaption .muted{font-size:11.5px}
+.chart-legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin:2px 0 4px}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.swatch{display:inline-block;width:10px;height:3px;border-radius:2px;background:var(--series-1)}
+.swatch.series-2{background:var(--series-2)}
+.chart-svg{width:100%;height:150px;display:block;overflow:visible}
+.chart-grid{stroke:var(--line);stroke-width:1;vector-effect:non-scaling-stroke}
+.chart-axis{fill:var(--muted);font-size:10px;font-family:inherit}
+.chart-line{fill:none;stroke:var(--series-1);stroke-width:2;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.chart-line.series-2{stroke:var(--series-2)}
+.chart-cross{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.chart-hit{fill:transparent;cursor:crosshair}
+.chart-tip{position:absolute;top:44px;transform:translateX(-50%);display:grid;gap:2px;padding:6px 9px;border-radius:8px;background:var(--panel);border:1px solid var(--line);box-shadow:0 6px 18px rgb(0 0 0 / .15);font-size:12px;color:var(--text);pointer-events:none;white-space:nowrap;z-index:5}
+.chart-tip span{display:inline-flex;align-items:center;gap:6px}
+@media(max-width:600px){.chart-grid-wrap{grid-template-columns:1fr;padding:4px 10px 12px}}
+.chart-tip[hidden]{display:none}

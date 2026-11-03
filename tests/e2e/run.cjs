@@ -187,6 +187,14 @@ function totp(secret, at = Date.now()) {
     await page.fill('#global-search', 'db-0'); await sleep(150); await page.keyboard.press('Enter');
     await page.waitForFunction(() => state.page === 'object', null, { timeout: 8000 });
   });
+  await step('Leistungsverlauf (RRD) im VM-Tab und Host-Verlauf', async () => {
+    await page.evaluate(() => { state.objectTab = 'metrics'; render() });
+    await page.waitForSelector('#page svg.chart-svg path.chart-line', { timeout: 10000 });
+    await page.evaluate(() => nav('clusters')); await page.waitForSelector('[data-host-metrics]', { timeout: 8000 });
+    await page.click('[data-host-metrics]');
+    await page.waitForSelector('dialog svg.chart-svg path.chart-line', { timeout: 10000 });
+    await page.click('dialog [data-cancel]');
+  });
   await step('Storage-, Netzwerk-, Datensicherungs- und Lifecycle-Seiten laden', async () => {
     for (const p of ['storage', 'network', 'protection', 'security', 'lifecycle', 'clusters', 'settings']) {
       await page.evaluate(x => nav(x), p); await sleep(900);
@@ -267,6 +275,7 @@ function totp(secret, at = Date.now()) {
     await page.evaluate(() => actions.logout()); await page.waitForSelector('input[name=password]', { timeout: 8000 });
   });
   await step('Operator: Admin-Bereiche gesperrt, Gäste bedienbar', async () => {
+    await page.waitForLoadState('networkidle'); await sleep(600);
     await page.fill('#f-username', 'olga'); await page.fill('#f-password', 'operator-password-1');
     await page.click('#auth-form button.primary');
     await page.waitForSelector('.prism-topbar', { timeout: 10000 });
