@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "nginx-proxy-manager",
+  "name": "Nginx Proxy Manager",
+  "version": "1.0.0",
+  "kind": "cloud-init-recipe",
+  "base_os": "ubuntu-24.04",
+  "status": "go-deployment",
+  "cloud_init": {
+    "package_update": true,
+    "packages": [
+      "qemu-guest-agent",
+      "docker.io"
+    ]
+  },
+  "notes": "Go-Bereitstellung über Proxmox VE 9+. Basisimage und NoCloud-ISO über die Proxmox-API. Gast-Paketinstallation benötigt Internet; noch nicht gegen einen realen Gast abgenommen.",
+  "base_image": {
+    "name": "ubuntu-24.04-cloud.qcow2",
+    "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+    "size": 621284352,
+    "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+  },
+  "containers": [
+    {
+      "name": "npm",
+      "image": "jc21/nginx-proxy-manager:2",
+      "ports": [
+        "80:80",
+        "81:81",
+        "443:443"
+      ],
+      "volumes": [
+        "npm-data:/data",
+        "npm-letsencrypt:/etc/letsencrypt"
+      ]
+    }
+  ]
+}

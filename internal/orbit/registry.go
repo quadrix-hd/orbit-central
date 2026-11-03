@@ -179,6 +179,9 @@ func (s *Server) submitRegistry(ctx context.Context, d doc, key string) (doc, in
 	a["disk"] = integer(d, "disk", 8, 65536)
 	a["image"] = configOf(sources[str(dep["image_sha256"])])
 	a["packages"] = dep["packages"]
+	if list := anyList(dep["containers"]); len(list) > 0 {
+		a["containers"] = list
+	}
 	a["package_id"] = p["id"]
 	a["package_version"] = p["version"]
 	a["endpoint"] = targets["endpoint"]
@@ -186,22 +189,23 @@ func (s *Server) submitRegistry(ctx context.Context, d doc, key string) (doc, in
 	s.unused(ctx, c, id, name)
 	return s.insertTask(ctx, "operations", key, newTask(cid, node, name, "registry_deploy", id, a))
 }
-func seedPayloads(name, username, ssh, id string, packages []any) map[string][]byte {
+func seedPayloads(name, username, ssh, id string, packages []any, containers ...any) map[string][]byte {
 	data := doc{"hostname": name, "manage_etc_hosts": true, "users": []any{doc{"name": username, "groups": []string{"sudo"}, "sudo": "ALL=(ALL) NOPASSWD:ALL", "shell": "/bin/bash", "lock_passwd": true, "ssh_authorized_keys": strings.Split(ssh, "\n")}}, "ssh_pwauth": false, "disable_root": true, "package_update": len(packages) > 0, "packages": packages, "growpart": doc{"mode": "auto", "devices": []string{"/"}}, "resize_rootfs": true}
 	commands := []any{}
-	services := map[string]string{"docker.io": "docker", "nginx": "nginx", "postgresql": "postgresql", "redis-server": "redis-server"}
+	services := map[string]string{"docker.io": "docker", "nginx": "nginx", "postgresql": "postgresql", "redis-server": "redis-server", "mariadb-server": "mariadb", "apache2": "apache2", "haproxy": "haproxy", "prometheus": "prometheus", "prometheus-node-exporter": "prometheus-node-exporter", "mosquitto": "mosquitto", "samba": "smbd", "nfs-kernel-server": "nfs-server", "memcached": "memcached", "rabbitmq-server": "rabbitmq-server", "zabbix-agent": "zabbix-agent", "bind9": "named", "squid": "squid", "fail2ban": "fail2ban", "chrony": "chrony"}
 	for _, p := range packages {
 		if svc := services[str(p)]; svc != "" {
 			commands = append(commands, []string{"systemctl", "enable", "--now", svc})
 		}
 	}
+	commands = append(commands, containerCommands(containers)...)
 	data["runcmd"] = commands
 	return map[string][]byte{"user-data": append([]byte("#cloud-config\n"), must(json.Marshal(data))...), "meta-data": must(json.Marshal(doc{"instance-id": id, "local-hostname": name})), "network-config": must(json.Marshal(doc{"version": 2, "ethernets": doc{"ethernet": doc{"match": doc{"name": "e*"}, "dhcp4": true}}}))}
 }
-func seedISO(ctx context.Context, path, name, username, ssh, id string, packages []any) {
+func seedISO(ctx context.Context, path, name, username, ssh, id string, packages []any, containers ...any) {
 	dir := must(os.MkdirTemp(filepath.Dir(path), "seed-data-"))
 	defer os.RemoveAll(dir)
-	for name, raw := range seedPayloads(name, username, ssh, id, packages) {
+	for name, raw := range seedPayloads(name, username, ssh, id, packages, containers...) {
 		if e := os.WriteFile(filepath.Join(dir, name), raw, 0600); e != nil {
 			panic(e)
 		}
@@ -364,7 +368,7 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 			defer os.RemoveAll(dir)
 			path := filepath.Join(dir, seedName)
 			pkgs, _ := a["packages"].([]any)
-			seedISO(ctx, path, str(op["name"]), str(a["username"]), str(a["ssh"]), str(op["id"]), pkgs)
+			seedISO(ctx, path, str(op["name"]), str(a["username"]), str(a["ssh"]), str(op["id"]), pkgs, anyList(a["containers"])...)
 			begin("seed")
 			waiting("seed", s.upload(ctx, nodePin(), node, str(a["iso_storage"]), path, seedName, "iso"))
 		}

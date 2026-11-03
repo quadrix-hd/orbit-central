@@ -272,6 +272,18 @@ function totp(secret, at = Date.now()) {
     await page.evaluate(() => loadMaintenance(true)); await sleep(300);
     await page.click('[data-rolling^="dismiss|"]'); await waitMaint(items => !items.length, 10000);
   });
+  await step('Restore-Test: neuestes Backup wiederherstellen, starten, aufräumen', async () => {
+    await page.evaluate(() => nav('protection'));
+    await page.waitForSelector('[data-restore-test]', { timeout: 10000 });
+    await page.click('[data-restore-test]');
+    await page.selectOption('#f-source', '100'); await page.selectOption('#f-backup_storage', 'pbs-store'); await page.selectOption('#f-storage', 'local-lvm');
+    await page.click('#restore-test-form button.primary');
+    const until = Date.now() + 60000; let rt;
+    while (Date.now() < until) { rt = (await api('restore-tests')).data.items[0]; if (rt && ['passed', 'failed'].includes(rt.state)) break; await sleep(700) }
+    expect(rt?.state === 'passed', 'restore test ' + rt?.state + ' ' + rt?.result);
+    const inv = (await api('connections/' + (await page.evaluate(() => state.connections[0].id)) + '/inventory')).data;
+    expect(!inv.some(r => String(r.name).startsWith('restoretest-')), 'temporary VM left behind');
+  });
   await step('Berichte: CSV-Inventar und Kapazitätsbericht', async () => {
     await page.evaluate(() => nav('reports')); await page.waitForSelector('[data-report="guests"]');
     const csv = await page.evaluate(() => reportDefs.guests[2]());

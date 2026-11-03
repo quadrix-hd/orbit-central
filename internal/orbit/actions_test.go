@@ -57,6 +57,8 @@ func actionServer(t *testing.T) (*Server, *fakePVE) {
 				data = []any{doc{"iface": "vmbr0", "type": "bridge"}}
 			case strings.HasSuffix(path, "/config"):
 				data = f.config
+			case strings.HasSuffix(path, "/status/current"):
+				data = doc{"status": "running"}
 			case strings.Contains(path, "/tasks/"):
 				data = doc{"status": "stopped", "exitstatus": "OK"}
 			case strings.HasSuffix(path, "/snapshot"):
@@ -69,7 +71,7 @@ func actionServer(t *testing.T) (*Server, *fakePVE) {
 			case path == "/cluster/nextid":
 				data = "101"
 			case strings.HasSuffix(path, "/content"):
-				data = []any{doc{"volid": "local:iso/test.iso", "content": "iso"}, doc{"volid": "local:backup/vzdump-qemu-100.vma.zst", "content": "backup"}}
+				data = []any{doc{"volid": "local:iso/test.iso", "content": "iso"}, doc{"volid": "local:backup/vzdump-qemu-100.vma.zst", "content": "backup", "vmid": 100, "ctime": 1700000000}}
 			default:
 				data = []any{}
 			}

@@ -403,6 +403,10 @@ func (s *Server) advanceMaintenance(ctx context.Context) {
 		if e := guarded(func() {
 			if d["kind"] == "rolling" {
 				s.advanceRolling(ctx, d)
+			} else if d["kind"] == "restoretest" {
+				if e := guarded(func() { s.advanceRestoreTest(ctx, d) }); e != nil && ctx.Err() == nil && contains("queued,restoring,booting", str(d["state"])) {
+					s.finishRestoreTest(ctx, d, false, "Restore-Test abgebrochen: "+errorText(e))
+				}
 			} else {
 				s.advanceNode(ctx, d)
 			}

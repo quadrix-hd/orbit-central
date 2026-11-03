@@ -147,9 +147,11 @@ function route(local, method, p, q, body) {
   if (rest === '/qemu' || rest === '/lxc') {
     if (method === 'GET') return resources('vm').filter(v => v.node === node && v.type === rest.slice(1));
     const id = +body.vmid; if (state.guests[id]) throw { status: 500, message: `unable to create VM ${id} - config file already exists` };
-    const name = body.name || body.hostname || 'vm' + id;
-    state.guests[id] = { type: rest.slice(1), node, name, status: 'stopped', maxcpu: +body.cores || 1, maxmem: (+body.memory || 512) * 1048576, mem: 0, cpu: 0, maxdisk: 32 * GiB, template: 0, tags: '', config: { ...body, digest: 'n' + id } };
-    return task(node, rest === '/qemu' ? 'qmcreate' : 'vzcreate', id);
+    const src = body.archive && (String(body.archive).match(/backup\/vm\/(\d+)\//) || [])[1], from = src && state.guests[+src];
+    if (body.archive && !from) throw { status: 500, message: 'unable to restore - archive not found' };
+    const name = from ? from.name : body.name || body.hostname || 'vm' + id;
+    state.guests[id] = from ? { ...from, node, status: 'stopped', tags: '', config: { ...from.config, digest: 'n' + id } } : { type: rest.slice(1), node, name, status: 'stopped', maxcpu: +body.cores || 1, maxmem: (+body.memory || 512) * 1048576, mem: 0, cpu: 0, maxdisk: 32 * GiB, template: 0, tags: '', config: { ...body, digest: 'n' + id } };
+    return task(node, body.archive ? 'qmrestore' : rest === '/qemu' ? 'qmcreate' : 'vzcreate', id);
   }
   if ((m = rest.match(/^\/(qemu|lxc)\/(\d+)(\/.*)?$/))) {
     const kind = m[1], id = +m[2], sub = m[3] || '', g = state.guests[id];

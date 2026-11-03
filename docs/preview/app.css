@@ -753,3 +753,4 @@ dialog.modal-wide{width:min(1180px,96vw);max-width:96vw}
 .shell-screen{height:min(62vh,620px);min-height:360px}
 .console-footer-actions{display:inline-flex;gap:8px;align-items:center}
 #paste-form textarea{width:100%;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.panel-note{margin:-4px 16px 10px;font-size:12.5px}

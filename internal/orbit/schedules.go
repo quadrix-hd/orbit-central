@@ -19,7 +19,7 @@ import (
 // through the normal operation queue, so validation, audit and the
 // operation log are the same as for actions started by hand.
 
-var scheduleActions = map[string]string{"start": "Starten", "shutdown": "Herunterfahren", "reboot": "Neu starten", "stop": "Hart ausschalten", "snapshot": "Snapshot", "backup": "Backup"}
+var scheduleActions = map[string]string{"start": "Starten", "shutdown": "Herunterfahren", "reboot": "Neu starten", "stop": "Hart ausschalten", "snapshot": "Snapshot", "backup": "Backup", "restore_test": "Restore-Test"}
 var scheduleTimeRE = regexp.MustCompile(`^([01][0-9]|2[0-3]):[0-5][0-9]$`)
 var tagRE = regexp.MustCompile(`^[a-z0-9_][a-z0-9_+.-]{0,63}$`)
 
@@ -171,11 +171,15 @@ func (s *Server) scheduleInput(d doc, old doc) doc {
 	}
 	delete(sc, "keep")
 	delete(sc, "storage")
+	delete(sc, "restore_storage")
 	switch action {
 	case "snapshot":
 		sc["keep"] = integer(d, "keep", 1, 100)
 	case "backup":
 		sc["storage"] = field(d, "storage", 64, `[a-zA-Z0-9_.-]+`)
+	case "restore_test":
+		sc["storage"] = field(d, "storage", 64, `[a-zA-Z0-9_.-]+`)
+		sc["restore_storage"] = field(d, "restore_storage", 64, `[a-zA-Z0-9_.-]+`)
 	case "stop":
 		if !boolean(d, "acknowledge") {
 			fail("Geplantes hartes Ausschalten ausdrücklich bestätigen.")
@@ -332,6 +336,20 @@ func (s *Server) runSchedule(ctx context.Context, sc doc, at time.Time, who stri
 			}
 			if skip != "" {
 				res["status"], res["message"] = "skipped", "Übersprungen: "+skip+"."
+				results = append(results, res)
+				continue
+			}
+			if action == "restore_test" {
+				if e := guarded(func() {
+					s.maintMu.Lock()
+					defer s.maintMu.Unlock()
+					rt := s.createRestoreTest(jobCtx, doc{"connection_id": c.ID, "node": g["node"], "backup_storage": sc["storage"], "storage": sc["restore_storage"], "source_vmid": id, "source_name": g["name"]}, actor)
+					res["restore_test_id"] = rt["id"]
+				}); e != nil {
+					res["status"], res["message"] = "failed", errorText(e)
+				} else {
+					res["status"] = "queued"
+				}
 				results = append(results, res)
 				continue
 			}

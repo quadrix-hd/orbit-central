@@ -215,6 +215,17 @@ func (c *Catalog) Validate(d doc) (doc, doc) {
 				}
 			}
 			q["deployment"] = doc{"kind": "cloud-image", "image_sha256": image, "packages": pkgs, "requires_guest_internet": len(pkgs) > 0}
+			if raw, exists := a["containers"]; exists {
+				containers := validContainers(raw)
+				hasDocker := false
+				for _, pkg := range pkgs {
+					hasDocker = hasDocker || pkg == "docker.io"
+				}
+				if len(containers) > 0 && !hasDocker {
+					fail("Container-Rezepte benötigen das Paket docker.io.")
+				}
+				q["deployment"].(doc)["containers"] = containers
+			}
 		}
 		out = append(out, q)
 	}

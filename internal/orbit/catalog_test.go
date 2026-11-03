@@ -119,8 +119,17 @@ func TestPublishedRegistryManifestIsValid(t *testing.T) {
 	c := NewCatalog(t.TempDir(), "https://quadrix-hd.github.io/orbit-central/catalog.json", "web")
 	if e := guarded(func() {
 		snapshot, assets := c.Validate(d)
-		if len(objects(snapshot["packages"])) != 6 || len(assets) != 8 {
-			t.Fatal("missing recipes or deduplicated images")
+		if len(objects(snapshot["packages"])) != 25 || len(assets) != 27 {
+			t.Fatalf("missing recipes or deduplicated images: %d packages, %d assets", len(objects(snapshot["packages"])), len(assets))
+		}
+		withContainers := 0
+		for _, p := range objects(snapshot["packages"]) {
+			if len(anyList(asDoc(p["deployment"])["containers"])) > 0 {
+				withContainers++
+			}
+		}
+		if withContainers != 7 {
+			t.Fatalf("container recipes: %d", withContainers)
 		}
 	}); e != nil {
 		t.Fatal(e)

@@ -440,6 +440,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	if handled, err := s.maintenanceRoutes(w, r, data); handled || err != nil {
 		return err
 	}
+	if handled, err := s.restoreTestRoutes(w, r, data); handled || err != nil {
+		return err
+	}
 	if handled, err := s.settingsRoutes(w, r, data, session); handled || err != nil {
 		return err
 	}
