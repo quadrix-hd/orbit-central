@@ -1,4 +1,4 @@
-# Orbit Central · Go 0.12.0
+# Orbit Central · Go 0.13.0
 
 Lokales Dashboard für Proxmox VE und optional Proxmox Backup Server.
 Der Server, die Proxmox-Anbindung, Aufgabenverarbeitung, Konsole, Registry und
@@ -287,3 +287,29 @@ Konfiguration. Die Queue prüft vor dem Schreiben erneut und verfolgt UPIDs.
 Eine unklare Übermittlung wird niemals automatisch wiederholt. Diese Version
 ist weiterhin keine vollständige PegaProx-Funktionsgleichheit; siehe
 [Vergleich und offene Arbeit](PEGAPROX_PARITY.md).
+
+## Go 0.13: Container vollständigere Grundabläufe
+
+Unter „Virtuelle Maschinen“ stehen „LXC erstellen“ und „LXC wiederherstellen“.
+Erstellung nutzt vorhandene Container-Templates (`vztmpl`), aktives Storage mit
+`rootdir`, eine Bridge und einen öffentlichen SSH-Schlüssel. RAM und Swap werden
+in MiB angegeben. Unprivilegiert ist vorausgewählt, DHCP ist die erste
+Netzwerkkonfiguration. Es werden keine Templates aus beliebigen URLs ausgeführt.
+
+Restore unterstützt LXC-tar-Backups und PBS-CT-Backups in eine freie CTID.
+Konfiguration und Berechtigungsmodus stammen aus dem Backup; MAC-Adressen werden
+neu erzeugt. Statische IPs, UID-Mappings und zusätzliche Mountpoints müssen vor
+manuellem Start geprüft werden. Kein Überschreiben; neue Container und Restores
+bleiben gestoppt, Autostart ist ausgeschaltet.
+
+Laufende Container haben einen „Konsole“-Tab: Proxmox VNC-Terminal über das
+bestehende Go-Gateway und lokale noVNC-Assets. Kein zusätzlicher Coterm oder SSH-
+Zugang von Orbit nötig. Neue Proxmox-Konsolenpasswörter werden getrennt vom
+WebSocket-Ticket behandelt. Die Freigabe bleibt sitzungsgebunden, kurz gültig und
+endet bei Abmeldung. Rechte `VM.Console` und passende Proxmox-Token-Unterstützung
+bleiben erforderlich; echte Cluster-Abnahme ist noch offen.
+
+Nesting, Keyctl und FUSE lassen sich im LXC-Optioneneditor ändern. Andere Flags
+bleiben erhalten. Proxmox prüft die nötigen Rechte und den tatsächlichen
+Anwendungszeitpunkt. Vollständige Nutanix-/PegaProx-Parität ist ausdrücklich noch
+nicht erreicht: [Funktions- und Abnahmestand](ACCEPTANCE_MATRIX.md).

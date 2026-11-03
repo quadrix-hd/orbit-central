@@ -1,4 +1,4 @@
-# Funktionsumfang und verbleibende Lücken · Go 0.12
+# Funktionsumfang und verbleibende Lücken · Go 0.13
 
 Ziel ist eine eigenständige zentrale Proxmox-Oberfläche. Der aktuelle Stand ist
 noch keine vollständige Funktionsgleichheit mit Proxmox, PegaProx oder Nutanix.
@@ -11,7 +11,7 @@ einer Hauptnavigation, Kontextauswahl, Ressourcenübersichten und Aufgaben.
 | Host-Netzwerk | Linux-Bridge/Bond/VLAN, IPv4/IPv6, Gateway, MTU, Ports, VLAN-Basis, explizites Anwenden/Verwerfen, Diff | Vollständige OVS-, VXLAN-/EVPN-/SDN-, Controller-/Subnetz- und DHCP-Editoren |
 | Firewall | Regeln und Optionen für Datacenter/Host/QEMU/LXC, Erstellen/Bearbeiten/Löschen/Umordnen, Digest-/Revisionsprüfung | Vollständige Alias-/IPSet-/Security-Group-Editoren, alle erweiterten Backend-Optionen und Logs |
 | VM | CPU/RAM in MiB, Sockets/CPU-Modell/Ballooning, NIC/MAC/Rate/MTU, Boot/BIOS/Machine/Agent, Disk hinzufügen/vergrößern/verschieben, ISO, Snapshot, Backup/Restore, Migration, HA, Erstellung, Löschen, noVNC | Vollständige PCI-/USB-/EFI-/TPM-/Cloud-init- und weitere Proxmox-Detailkonfiguration |
-| LXC | Ressourcen in MiB, Swap, IP/Gateway/DNS, NICs, verwaltete Mountpoints hinzufügen/vergrößern/verschieben, Optionen, Snapshots, Backup, gestoppte Migration, HA | Erstellung, Restore, Terminal und weitere Mountpoint-/Feature-Optionen |
+| LXC | Erstellung/Restore in neue CTID, VNC-Terminalkonsole, Ressourcen in MiB, Swap, IP/Gateway/DNS, NICs, verwaltete Mountpoints, Optionen/Features, Snapshots, Backup, gestoppte Migration, HA | Weitere Mountpoint-/Feature-Optionen, Terminal-Resize/Clipboard und Realabnahme |
 | Storage | Inhaltstypen/Nodes/Aktivierung/Shared bearbeiten, Volumes ansehen, Directory/NFS/LVM-thin/ZFS-Konfiguration anlegen | Ceph-/Pool-/VG-Verwaltung, Storage-Credentials bearbeiten, Volume-Lösch-/Upload-Workflows und weitere Backend-Optionen |
 | Sicherung/HA | VM-Aktionen, HA-Gastzustände, Status/Jobs lesen | Backup-Zeitplan-, Replikations- und vollständige HA-Regel-Editoren, orchestrierte DR-Pläne |
 | Hosts/Lifecycle | Versionen/Updateübersicht lesen | DNS/NTP/Repositories/Dienste, geprüfte Updates/Upgrades und Host-Shell |
@@ -38,3 +38,5 @@ Authentifizierung sauber lösen. Die Konfiguration eines bereits mit Convoy
 verbundenen Coterm sollte dafür nicht ungeprüft verändert werden. In 0.11
 bleibt Orbits Go-Gateway aktiv; Coterm wird weder installiert noch
 umkonfiguriert, und es gibt keinen funktionslosen Provider-Schalter.
+
+Verbindlicher Abnahmestand: [ACCEPTANCE_MATRIX.md](ACCEPTANCE_MATRIX.md). Vollständige Produktparität ist nicht abgeschlossen.

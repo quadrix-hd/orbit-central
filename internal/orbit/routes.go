@@ -16,7 +16,7 @@ func (s *Server) extraRoutes(w http.ResponseWriter, r *http.Request, d doc, sess
 		switch {
 		case path == "/api/capabilities" && method == "GET":
 			handled = true
-			writeJSON(w, 200, doc{"runtime": "go", "version": Version, "stage": "development", "supported": []string{"auth", "connections", "inventory", "monitoring", "vm_detail", "operations", "jobs", "console", "registry_deploy", "catalog_cache", "backup_restore", "live_stream", "network_linux", "firewall_rules", "direct_metrics", "storage_config", "guest_edit", "lxc_network_mountpoints"}, "pending": []string{"sdn_editor", "ovs_editor", "firewall_aliases_ipsets_groups", "rbac_sso", "host_upgrades", "lxc_console_create", "coterm_adapter"}})
+			writeJSON(w, 200, doc{"runtime": "go", "version": Version, "stage": "development", "supported": []string{"auth", "connections", "inventory", "monitoring", "vm_detail", "operations", "jobs", "console", "registry_deploy", "catalog_cache", "backup_restore", "live_stream", "network_linux", "firewall_rules", "direct_metrics", "storage_config", "guest_edit", "lxc_network_mountpoints", "lxc_create_restore", "lxc_vnc_terminal"}, "pending": []string{"sdn_editor", "ovs_editor", "firewall_aliases_ipsets_groups", "rbac_sso", "host_upgrades", "coterm_adapter"}})
 		case path == "/api/operations" && method == "POST":
 			handled = true
 			result, status := s.submitOperation(r.Context(), d)

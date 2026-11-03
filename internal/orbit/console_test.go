@@ -14,7 +14,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func TestConsoleRelaysBinaryAndExpiresOnLogout(t *testing.T) {
+func TestConsoleRelaysBinaryAndExpiresOnLogout(t *testing.T) { testGuestConsole(t, "qemu", "legacy") }
+func TestContainerConsoleUsesLXCPathAndSeparateVNCPassword(t *testing.T) {
+	testGuestConsole(t, "lxc", "separate")
+}
+func TestContainerConsoleExtractsLegacyPrefixedPassword(t *testing.T) {
+	testGuestConsole(t, "lxc", "prefix")
+}
+func testGuestConsole(t *testing.T, kind, mode string) {
 	root := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(root, "core"), 0700)
 	_ = os.WriteFile(filepath.Join(root, "core", "rfb.js"), []byte("// test"), 0600)
@@ -24,7 +31,14 @@ func TestConsoleRelaysBinaryAndExpiresOnLogout(t *testing.T) {
 			t.Error("missing server-side credential")
 		}
 		if strings.HasSuffix(r.URL.Path, "/vncwebsocket") {
-			if r.URL.Query().Get("vncticket") != "short-ticket" {
+			if !strings.Contains(r.URL.Path, "/"+kind+"/100/") {
+				t.Error("wrong guest endpoint", r.URL.Path)
+			}
+			ticket := "short-ticket"
+			if mode == "prefix" {
+				ticket = "vnc-secret:PVEVNC:legacy-ticket"
+			}
+			if r.URL.Query().Get("vncticket") != ticket {
 				t.Error("wrong ticket")
 			}
 			u := websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }, Subprotocols: []string{"binary"}}
@@ -45,9 +59,18 @@ func TestConsoleRelaysBinaryAndExpiresOnLogout(t *testing.T) {
 		}
 		var data any
 		if strings.HasSuffix(r.URL.Path, "/vncproxy") {
+			if !strings.Contains(r.URL.Path, "/"+kind+"/100/") {
+				t.Error("wrong creation endpoint", r.URL.Path)
+			}
 			data = doc{"port": 5900, "ticket": "short-ticket"}
+			if mode == "separate" {
+				data.(doc)["password"] = "vnc-secret"
+			}
+			if mode == "prefix" {
+				data.(doc)["ticket"] = "vnc-secret:PVEVNC:legacy-ticket"
+			}
 		} else {
-			data = []any{doc{"type": "qemu", "vmid": 100, "node": "node1", "name": "vm-one"}}
+			data = []any{doc{"type": kind, "vmid": 100, "node": "node1", "name": "vm-one", "status": "running"}}
 		}
 		_ = json.NewEncoder(w).Encode(doc{"data": data})
 	}))
@@ -76,6 +99,16 @@ func TestConsoleRelaysBinaryAndExpiresOnLogout(t *testing.T) {
 	}
 	var grant doc
 	_ = json.Unmarshal(w.Body.Bytes(), &grant)
+	if grant["guest_type"] != kind {
+		t.Fatal(grant)
+	}
+	want := "short-ticket"
+	if mode != "legacy" {
+		want = "vnc-secret"
+	}
+	if grant["password"] != want {
+		t.Fatal("wrong RFB password", grant)
+	}
 	if strings.Contains(w.Body.String(), "example-secret") {
 		t.Fatal("permanent token leaked")
 	}
@@ -89,8 +122,8 @@ func TestConsoleRelaysBinaryAndExpiresOnLogout(t *testing.T) {
 	if e = client.WriteMessage(websocket.BinaryMessage, []byte{0, 1, 2, 255}); e != nil {
 		t.Fatal(e)
 	}
-	kind, payload, e := client.ReadMessage()
-	if e != nil || kind != websocket.BinaryMessage || string(payload) != string([]byte{0, 1, 2, 255}) {
+	wireKind, payload, e := client.ReadMessage()
+	if e != nil || wireKind != websocket.BinaryMessage || string(payload) != string([]byte{0, 1, 2, 255}) {
 		t.Fatalf("relay %v %v", payload, e)
 	}
 	again := request(s, "GET", "/api/consoles/"+str(grant["id"]), "", cookie, "", "")
@@ -103,5 +136,16 @@ func TestConsoleRelaysBinaryAndExpiresOnLogout(t *testing.T) {
 	_ = client.SetReadDeadline(time.Now().Add(3 * time.Second))
 	if _, _, e = client.ReadMessage(); e == nil {
 		t.Fatal("console survived logout")
+	}
+}
+
+func TestStoppedContainerConsoleNeverStartsGuest(t *testing.T) {
+	s, f := managementServer(t)
+	f.guestType = "lxc"
+	f.status = "stopped"
+	cookie, csrf := setup(t, s, s.Store)
+	w := request(s, "POST", "/api/consoles", `{"connection_id":"test","node":"node1","vmid":100}`, cookie, csrf, s.Origin)
+	if w.Code != 400 || len(f.writes) > 0 {
+		t.Fatal(w.Code, f.writes)
 	}
 }

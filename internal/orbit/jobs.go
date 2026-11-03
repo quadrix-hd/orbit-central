@@ -257,7 +257,7 @@ func (s *Server) workspaceCatalog(ctx context.Context, c Connection, node string
 			continue
 		}
 		active = append(active, store)
-		for _, content := range []string{"iso", "backup"} {
+		for _, content := range []string{"iso", "backup", "vztmpl"} {
 			if !contains(str(store["content"]), content) {
 				continue
 			}

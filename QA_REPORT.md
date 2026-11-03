@@ -143,3 +143,26 @@ Backend-Kompatibilität, Hotplug/Pending und die Weiterleitung von SSE durch den
 Reverse-Proxy sind installationsabhängig. Es wurden keine echten Hosts/Gäste
 verändert oder neu gestartet. Der PegaProx-Abgleich steht in PEGAPROX_PARITY.md;
 volle Funktionsgleichheit wird ausdrücklich nicht als abgeschlossen ausgewiesen.
+
+## Go 0.13 · LXC-Erstellung, Restore und Konsole
+
+- `go test -race ./...`: 170 Tests einschließlich Untertests bestanden.
+- `go vet ./...` und `npm test` bestanden.
+- Container-Erstellung mit neuer CTID, rootdir-Storage, vorhandenem Template,
+  MiB-RAM/Swap, öffentlichem SSH-Schlüssel, Berechtigungsmodus und VLAN geprüft.
+  Keine automatischen Start-/Reboot-/Shutdown-Aufrufe.
+- LXC-tar- und PBS-CT-Restore: neue CTID, `force=0`, `start=0`, neue MAC,
+  keine unbeabsichtigte Überschreibung von Backup-Ressourcen/Berechtigungsmodus.
+- Fehlende Quelle, belegte ID, falscher Archivtyp, fehlender/privater Schlüssel,
+  falsche Bestätigung und unklare Übermittlung geprüft. Worker liest Quelle erneut;
+  ein unklarer Schreibversuch wird nicht wiederholt.
+- VNC-Terminal über echte TLS-/WebSocket-Testserver: QEMU-/LXC-Pfade, separates
+  VNC-Passwort, älteres passwortpräfixiertes Ticket, Binärtransport und Sitzungsende.
+  Ein gestoppter Container erhält keine Konsolenfreigabe und wird nicht gestartet.
+- LXC-Feature-Flags werden zusammengeführt, ohne andere Flags zu verlieren.
+- DOM-Prüfungen für Create-/Restore-Formulare, kompatible Medien, fehlenden
+  Auto-Start-/Passwortschalter und Konsole ohne QEMU-CAD-Schalter bestanden.
+
+Reale Abnahme an Proxmox bleibt offen. Die Backend-/Versionsabhängigkeiten und
+fehlenden Produktfunktionen sind in ACCEPTANCE_MATRIX.md dokumentiert. Diese
+Prüfung bestätigt keine vollständige PegaProx-/Nutanix-Parität.

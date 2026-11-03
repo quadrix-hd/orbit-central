@@ -17,10 +17,10 @@ import (
 )
 
 type consoleGrant struct {
-	Session, CID, Endpoint, Node string
-	VMID, Port                   int
-	Ticket                       string
-	Expires                      time.Time
+	Session, CID, Endpoint, Node, Kind string
+	VMID, Port                         int
+	Ticket                             string
+	Expires                            time.Time
 }
 type Console struct {
 	mu      sync.Mutex
@@ -39,8 +39,12 @@ func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc
 	id := integer(d, "vmid", 100, 999999999)
 	c := s.conn(cid)
 	vm := s.findVM(ctx, c, id, node)
-	if vm["type"] != "qemu" {
-		fail("LXC-Terminal wird noch nicht unterstützt.")
+	kind := str(vm["type"])
+	if kind != "qemu" && kind != "lxc" {
+		fail("Nicht unterstützter Gasttyp.")
+	}
+	if kind == "lxc" && vm["status"] != "running" {
+		fail("Container-Konsole benötigt einen laufenden Container. Orbit startet ihn nicht automatisch.")
 	}
 	root := os.Getenv("ORBIT_NOVNC_ROOT")
 	if root == "" {
@@ -64,7 +68,7 @@ func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc
 	if full {
 		panic(problem("Zu viele offene Konsolen.", 429))
 	}
-	result := configOf(s.call(ctx, c, "POST", baseVM(node, "qemu", id)+"/vncproxy", doc{"websocket": 1}))
+	result := configOf(s.call(ctx, c, "POST", baseVM(node, kind, id)+"/vncproxy", doc{"websocket": 1}))
 	ticket, ok := result["ticket"].(string)
 	port := int(num(result["port"]))
 	if !ok || port < 1 || port > 65535 {
@@ -72,10 +76,17 @@ func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc
 	}
 	key := randomToken(32)
 	g.mu.Lock()
-	g.pending[key] = consoleGrant{session.ID, cid, s.PVE.Active(c), node, id, port, ticket, time.Now().Add(time.Minute)}
+	g.pending[key] = consoleGrant{Session: session.ID, CID: cid, Endpoint: s.PVE.Active(c), Node: node, Kind: kind, VMID: id, Port: port, Ticket: ticket, Expires: time.Now().Add(time.Minute)}
 	g.mu.Unlock()
 	_ = s.Store.Audit("console.open.requested", cid)
-	return doc{"id": key, "ticket": ticket, "expires_in": 60}
+	password := str(result["password"])
+	if password == "" {
+		password = ticket
+		if i := strings.Index(ticket, ":PVEVNC:"); i > 0 {
+			password = ticket[:i]
+		}
+	}
+	return doc{"id": key, "ticket": ticket, "password": password, "guest_type": kind, "expires_in": 60}
 }
 func (s *Server) proxyConsole(w http.ResponseWriter, r *http.Request, key string, session *session) error {
 	if r.Header.Get("Origin") != s.Origin {
@@ -119,7 +130,7 @@ func (s *Server) proxyConsole(w http.ResponseWriter, r *http.Request, key string
 	if err != nil {
 		return err
 	}
-	target := "wss://" + u.Host + "/api2/json" + baseVM(grant.Node, "qemu", grant.VMID) + "/vncwebsocket?" + query.Encode()
+	target := "wss://" + u.Host + "/api2/json" + baseVM(grant.Node, grant.Kind, grant.VMID) + "/vncwebsocket?" + query.Encode()
 	header := http.Header{"Authorization": {"PVEAPIToken=" + token}, "Origin": {grant.Endpoint}}
 	up, resp, err := dialer.DialContext(r.Context(), target, header)
 	if resp != nil && resp.Body != nil {

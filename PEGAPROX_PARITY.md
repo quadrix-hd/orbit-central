@@ -1,4 +1,4 @@
-# PegaProx als Funktionsreferenz · Orbit Go 0.12
+# PegaProx als Funktionsreferenz · Orbit Go 0.13
 
 Ziel: vergleichbarer Verwaltungsumfang mit eigener Go-Implementierung und einer
 Nutanix-orientierten Navigation. Keine Zusage, dass der aktuelle Stand bereits
@@ -17,12 +17,12 @@ Proxmox-Node-Statusabfragen und unabhängigem Inventar-/Modulkanal. Ein SSE-Tran
 allein garantiert keine frischen CPU-Werte: entscheidend sind Quelle, Abfragezeit,
 Pufferung und die Vermeidung späterer Überschreibungen durch alte Antworten.
 
-| Referenzbereich | Orbit 0.12 | Noch zu implementieren / abzunehmen |
+| Referenzbereich | Orbit 0.13 | Noch zu implementieren / abzunehmen |
 | --- | --- | --- |
 | Lastanzeige | Direkte Node-/Gastmessungen, Sekundentakt, Alter, SSE, gemeinsame Abfragen | Messung und Lasttest an realen Clustern, Langzeithistorie |
 | Multi-Cluster | Inventar, Verbindungen, geprüfte API-Fallbacks | Cross-Cluster-Migration/Transfernetz |
 | QEMU | Erstellung, Ressourcen, Optionen, NICs, Disk-Workflows, Snapshots, Konsole | Vollständige EFI/TPM/PCI/USB/Cloud-init-/Device-Editoren |
-| Container | Ressourcen/Swap, NIC/IP/DNS, Mountpoints, Snapshot, Backup, Migration | Erstellung/Restore, Terminal, weitere CT-Features |
+| Container | Erstellung/Restore in neue CTID, VNC-Terminal, Ressourcen/Swap, NIC/IP/DNS, Mountpoints, Optionen/Features, Snapshot, Backup, Migration | Weitere CT-/Mountpoint-Features, Terminalkomfort und Realabnahme |
 | Storage | Konfiguration bearbeiten, ausgewählte Backends einbinden, Inhalte lesen | Credentials, Ceph, Pools/VGs, Upload/Löschen |
 | Netzwerk | Linux-Bridge/Bond/VLAN und explizite Aktivierung | OVS/SDN/EVPN, vollständige Topologie |
 | Firewall | Datacenter/Host/Gast, Regeln und Optionen | Alias-/IPSet-/Security-Group-Editoren, Logs |
@@ -45,3 +45,5 @@ fehlende Wiederholungen und UI-Zustand. Sie ersetzen keine Abnahme der Storage-
 Backends, Gast-Hotplug-/Pending-Semantik oder Proxy-Konfiguration in einer echten
 Installation. Es wurden keine echten Hosts/Gäste gestartet, gestoppt oder
 umkonfiguriert.
+
+Nutanix-orientierte Anforderungen und Definition von „abgenommen“: [ACCEPTANCE_MATRIX.md](ACCEPTANCE_MATRIX.md).

@@ -345,6 +345,9 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 		return old, 200
 	}
 	action := field(d, "action", 20, "")
+	if action == "lxc_create" || action == "lxc_restore" {
+		return s.submitContainer(ctx, d, key)
+	}
 	if action == "storage_config" {
 		return s.submitStorage(ctx, d, key)
 	}
@@ -625,9 +628,12 @@ func (s *Server) processOperation(ctx context.Context, op doc) {
 		action := str(op["action"])
 		args := configOf(op["args"])
 		if op["stage"] == "queued" {
-			creating := action == "create" || action == "restore"
+			creating := contains("create,restore,lxc_create,lxc_restore", action)
 			if creating {
 				s.unused(ctx, c, int(num(op["vmid"])), str(op["name"]))
+				if action == "lxc_create" || action == "lxc_restore" {
+					s.containerPreflight(ctx, c, op)
+				}
 			} else {
 				vm := s.findVM(ctx, c, int(num(op["vmid"])), node)
 				if vm["name"] != op["name"] || vm["type"] != kind || truth(vm["template"]) {
@@ -659,8 +665,8 @@ func (s *Server) processOperation(ctx context.Context, op doc) {
 					args["sid"] = sid
 				}
 				synchronous = true
-			case "create", "restore":
-				path = "/nodes/" + url.PathEscape(node) + "/qemu"
+			case "create", "restore", "lxc_create", "lxc_restore":
+				path = "/nodes/" + url.PathEscape(node) + "/" + kind
 			case "configure", "metadata", "nic", "iso":
 				method = "PUT"
 				path = base + "/config"

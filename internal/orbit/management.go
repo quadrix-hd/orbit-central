@@ -351,6 +351,16 @@ func (s *Server) guestEditArgs(ctx context.Context, c Connection, vm, d doc) doc
 					fail("Ungültiges BIOS.")
 				}
 				a[k] = x
+			case "feature_nesting", "feature_keyctl", "feature_fuse":
+				if kind != "lxc" || category != "options" {
+					fail("Container-Feature benötigt.")
+				}
+				parts := propertyParts(str(config["features"]))
+				if existing, ok := a["features"]; ok {
+					parts = propertyParts(str(existing))
+				}
+				parts[strings.TrimPrefix(k, "feature_")] = strconv.Itoa(boolInt(boolean(f, k)))
+				a["features"] = propertyString(parts)
 			case "nameserver", "searchdomain":
 				if kind != "lxc" || category != "options" {
 					fail("Container-DNS-Option benötigt.")

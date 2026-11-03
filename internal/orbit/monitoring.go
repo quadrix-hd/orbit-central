@@ -112,7 +112,7 @@ func (s *Server) vmDetailData(r *http.Request, c Connection, vmid int) (doc, err
 		return nil, problem("Ungültige VM-Konfiguration.", 502)
 	}
 	clean := map[string]any{}
-	for _, key := range []string{"name", "cores", "sockets", "memory", "ostype", "agent", "onboot", "tags", "description", "template", "lock", "boot", "digest", "cpu", "cpulimit", "cpuunits", "balloon", "swap", "hostname", "protection", "bios", "machine", "nameserver", "searchdomain"} {
+	for _, key := range []string{"name", "cores", "sockets", "memory", "ostype", "agent", "onboot", "tags", "description", "template", "lock", "boot", "digest", "cpu", "cpulimit", "cpuunits", "balloon", "swap", "hostname", "protection", "bios", "machine", "nameserver", "searchdomain", "features", "unprivileged"} {
 		if value, exists := config[key]; exists {
 			clean[key] = value
 		}
