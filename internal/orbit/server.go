@@ -41,11 +41,12 @@ type Server struct {
 	metricsCache   map[string]metricCache
 	metricsRunning map[string]chan struct{}
 	TrustedProxies []*net.IPNet
+	Alerting       *alertEngine
 }
 
 func NewServer(s *Store, p *Proxmox, origin, static string) *Server {
 	proxies, _ := parseTrustedProxies(os.Getenv("ORBIT_TRUSTED_PROXIES"))
-	server := &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}, Console: newConsole(), ctx: context.Background(), TrustedProxies: proxies}
+	server := &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}, Console: newConsole(), ctx: context.Background(), TrustedProxies: proxies, Alerting: newAlertEngine()}
 	server.Catalog = NewCatalog(s.Dir, server.catalogSource(), os.Getenv("ORBIT_CATALOG_MODE"))
 	return server
 }
@@ -364,6 +365,9 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	if handled, err := s.infraRoutes(w, r); handled || err != nil {
 		return err
 	}
+	if handled, err := s.alertRoutes(w, r, data); handled || err != nil {
+		return err
+	}
 	if handled, err := s.settingsRoutes(w, r, data, session); handled || err != nil {
 		return err
 	}
@@ -563,7 +567,7 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		name = "index.html"
 	}
-	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "management.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff"}
+	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "management.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "operations.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff"}
 	mime, ok := allowed[name]
 	if !ok {
 		return problem("Nicht gefunden.", 404)
@@ -672,6 +676,14 @@ func (s *Server) connectionRead(w http.ResponseWriter, r *http.Request, c Connec
 			}
 			return jsonData(w, out, nil)
 		}
+	}
+	if len(parts) == 1 && parts[0] == "tasks" {
+		data, err := s.taskList(r, c)
+		return jsonData(w, data, err)
+	}
+	if len(parts) == 3 && parts[0] == "tasks" {
+		data, err := s.taskDetail(r, c, parts[1], parts[2])
+		return jsonData(w, data, err)
 	}
 	if len(parts) == 2 && parts[0] == "modules" {
 		return s.module(w, r, c, parts[1])

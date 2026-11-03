@@ -21,6 +21,17 @@ egal wie viele Editoren vorhanden sind.
 - [x] Reverse-Proxy-fähig: `ORBIT_TRUSTED_PROXIES`, echte Client-IP für
       Anmeldebegrenzung, Audit und Zugriffsprotokoll.
 - [x] HSTS, Permissions-Policy, COOP; fehlgeschlagene Anmeldungen im Audit.
+- [x] Farbschema „Graphit“ als neutraler Standard.
+- [x] Gast-Aktionen: hart ausschalten, Reset, Pausieren/Fortsetzen, Klonen
+      (voll/verknüpft, Ziel-Node/-Storage), in Vorlage umwandeln.
+- [x] Aufgabenzentrale: Proxmox-Tasks aller Cluster mit Filter und Live-Log.
+- [x] Alarme: Regeln, Zustände, Bestätigen, Benachrichtigung per Teams,
+      Slack/Mattermost, Discord, ntfy, generischem Webhook und SMTP.
+      (vorgezogen aus 0.16)
+- [x] DRS-Empfehlungen mit Anti-Affinität und Ausschluss per Tag, Ausführung
+      über die bestätigte Migration. (vorgezogen aus 0.20)
+- [x] [PROXMOX_UI_COVERAGE.md](PROXMOX_UI_COVERAGE.md): Abgleich mit der
+      Proxmox-Oberfläche und ProxCenter.
 - [ ] Gleiche Tabellen-Bausteine (Sortierung, Filter, Balken) für Hosts,
       Storage, Backups und Aufgaben.
 - [ ] Frontend-Quellstruktur: lesbare Quelldateien (`web/`) mit

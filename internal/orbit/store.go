@@ -105,6 +105,7 @@ func OpenStore(dir string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,request_key TEXT UNIQUE NOT NULL,data TEXT NOT NULL,created REAL NOT NULL);
  CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,request_key TEXT UNIQUE NOT NULL,data TEXT NOT NULL,created REAL NOT NULL);
  CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at REAL NOT NULL,action TEXT NOT NULL,details TEXT NOT NULL);
+ CREATE TABLE IF NOT EXISTS alerts(id TEXT PRIMARY KEY,data TEXT NOT NULL,updated REAL NOT NULL);
  INSERT OR IGNORE INTO settings VALUES('schema','1');`)
 	if err != nil {
 		return nil, err

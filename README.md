@@ -321,3 +321,32 @@ Nesting, Keyctl und FUSE lassen sich im LXC-Optioneneditor ändern. Andere Flags
 bleiben erhalten. Proxmox prüft die nötigen Rechte und den tatsächlichen
 Anwendungszeitpunkt. Vollständige Nutanix-/PegaProx-Parität ist ausdrücklich noch
 nicht erreicht: [Funktions- und Abnahmestand](ACCEPTANCE_MATRIX.md).
+
+## Betrieb: Alarme, Aufgaben und Lastverteilung
+
+**Alarme** (Navigation „Alarme“) prüfen jede Minute direkt über die
+Proxmox-API: Cluster nicht erreichbar, Host offline, CPU-/RAM-Schwelle mit
+Mindestdauer, Storage-Füllstand und fehlgeschlagene Proxmox-Tasks (wahlweise
+nur Backups). Alarme werden bestätigt; Task-Alarme gelten danach als erledigt,
+Zustandsalarme lösen sich automatisch, sobald der Wert wieder normal ist.
+Benachrichtigungskanäle: Microsoft Teams (Workflow-Webhook), Slack/Mattermost/
+Rocket.Chat, Discord, ntfy/Gotify, generisches JSON und E-Mail per SMTP
+(STARTTLS/TLS). Webhook-URLs und SMTP-Passwörter werden verschlüsselt
+gespeichert und nie an den Browser zurückgegeben. „Test senden“ prüft einen
+Kanal sofort. Der Orbit-Container braucht für Webhooks/SMTP ausgehenden
+Netzwerkzugriff.
+
+**Aufgaben → Proxmox-Tasks** zeigt die Task-Liste aller Cluster mit Filter,
+Suche und Log-Ansicht; laufende Tasks werden live nachgeladen.
+
+**Lastverteilung (DRS)** berechnet Migrationsempfehlungen für laufende
+QEMU-VMs nach RAM, CPU oder beidem. Tag `drs-ignore` schließt Gäste aus,
+`anti-affinity-<gruppe>` verteilt Gäste einer Gruppe auf verschiedene Hosts.
+Jede Empfehlung wird als normale, bestätigte Migration ausgeführt.
+
+**Gast-Aktionen** unter „Weitere Aktionen“: hart ausschalten, Reset,
+Pausieren/Fortsetzen (QEMU), Klonen (voll oder verknüpft von Vorlagen, mit
+Ziel-Node/-Storage) und Umwandeln in eine Vorlage.
+
+Welche Proxmox-Funktionen Orbit bereits abdeckt und welche noch fehlen:
+[PROXMOX_UI_COVERAGE.md](PROXMOX_UI_COVERAGE.md).

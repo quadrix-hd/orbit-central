@@ -13,7 +13,7 @@ import (
 )
 
 func defaultPreferences() doc {
-	return doc{"theme": "cloud", "density": "comfortable", "font_size": "normal", "refresh_seconds": 30, "default_cpu": 2, "default_ram": 4, "default_disk": 32}
+	return doc{"theme": "graphite", "density": "comfortable", "font_size": "normal", "refresh_seconds": 30, "default_cpu": 2, "default_ram": 4, "default_disk": 32}
 }
 func (s *Server) preferences() doc {
 	d := defaultPreferences()
@@ -49,7 +49,7 @@ func (s *Server) settingsRoutes(w http.ResponseWriter, r *http.Request, d doc, c
 		case path == "/api/settings" && method == "POST":
 			handled = true
 			clean := doc{}
-			for k, allowed := range map[string]string{"theme": "cloud,ocean,dusk", "density": "comfortable,compact", "font_size": "normal,large"} {
+			for k, allowed := range map[string]string{"theme": "graphite,cloud,ocean,dusk", "density": "comfortable,compact", "font_size": "normal,large"} {
 				v := field(d, k, 30, "")
 				if !contains(allowed, v) {
 					fail("Ungültige Einstellung: " + k)

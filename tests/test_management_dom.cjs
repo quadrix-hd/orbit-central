@@ -1,7 +1,7 @@
 const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict'),{JSDOM}=require('jsdom');
 const dom=new JSDOM('<html><body><div id="app"></div><div id="toast"></div><dialog id="modal"></dialog></body></html>',{url:'https://orbit.example',runScripts:'outside-only'}),w=dom.window;
 w.setTimeout=()=>1;w.setInterval=()=>1;w.clearTimeout=()=>{};w.scrollTo=()=>{};w.HTMLDialogElement.prototype.showModal=function(){this.open=true};w.HTMLDialogElement.prototype.close=function(){this.open=false};w.AbortSignal=AbortSignal;w.console=console;
-const ctx=dom.getInternalVMContext(),run=source=>vm.runInContext(source,ctx);for(const f of ['app.js','vm-workspace.js','infrastructure.js','management.js','live.js'])run(fs.readFileSync('dist/'+f,'utf8'));
+const ctx=dom.getInternalVMContext(),run=source=>vm.runInContext(source,ctx);for(const f of ['app.js','vm-workspace.js','infrastructure.js','management.js','live.js','operations.js'])run(fs.readFileSync('dist/'+f,'utf8'));
 (async()=>{
 run("state.mode='demo';state.authenticated=true;loadDemo();state.page='overview';render();state.mode='live'");
 run("applyCurrentMetrics({samples:[{connection_id:'demo',type:'qemu',node:'pve-01',vmid:100,cpu:0.71,mem:123456789,sampled_at:200}]})");

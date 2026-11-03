@@ -202,3 +202,20 @@ Spoofing-Schutz, Begrenzung pro Client hinter einem Proxy, Header, Dateinamen.
 
 `go vet`, `go test -race ./...` und `npm test` bestanden. Keine Aktionen auf
 echten Hosts oder Gästen durchgeführt.
+
+## Graphit, Gast-Aktionen, Aufgabenzentrale, Alarme, DRS
+
+Neue Go-Tests: Power-Aktionen (Stop/Reset/Suspend/Resume) inklusive
+Vorbedingungen und LXC-Grenzen, Klonen voll/verknüpft mit Ziel-Node/-Storage,
+Reservierung der Ziel-VMID gegen parallele Aufgaben, Umwandlung in Vorlage;
+Task-Liste (Sortierung, Zuordnung) und Task-Log mit UPID-Prüfung; Alarmregeln
+mit Haltedauer, geteilten Storages, Auflösung, Task-Ereignissen, Bestätigung,
+Verbindungsausfall ohne falsche Entwarnung; Webhook-Formate (Teams, JSON),
+Geheimnisschutz in der API, Fehlerweitergabe; SMTP-Versand gegen einen
+Test-SMTP-Server; Validierung der Konfiguration; Authentifizierung/CSRF der
+Alarm-Routen. Playwright-Durchläufe im Demomodus: Klon-Dialog, Task-Filter und
+-Log, Alarm bestätigen, Regeln speichern, Kanal anlegen, DRS-Empfehlung mit
+vorausgewähltem Ziel. `go vet`, `go test -race ./...` und `npm test` bestanden.
+
+Nicht geprüft: Versand an echte Teams-/Slack-/Mail-Systeme und alle Abläufe
+gegen einen echten Proxmox-Cluster.
