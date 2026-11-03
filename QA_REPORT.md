@@ -1,4 +1,4 @@
-# Orbit Go 0.9.0 · Prüfstand
+# Orbit Go · Prüfstand (fortlaufend ab 0.9.0)
 
 Stand: 2. November 2026. Der Standardcontainer läuft mit Go. Die aktive
 Python-Implementierung und Python-Wartungsprogramme sind aus dem Projekt
@@ -184,3 +184,21 @@ LXC-VNC-Terminal erhält beim Verbinden zusätzlich die gemessene Viewport-Breit
 und -Höhe (serverseitig auf Proxmox-Grenzen validiert). QEMU-Auflösung bleibt
 unverändert. TLS-/WebSocket-Tests prüfen die Weitergabe nur für LXC. Native
 Vollbildablehnung fällt auf eine fensterfüllende Großansicht mit Escape zurück.
+
+## Enterprise-Layout und Betriebshärtung · nach 0.13.1
+
+Oberfläche: abschließende Design-Schicht am Ende von `dist/app.css` (kompakte
+Kopfzeilen, neutrale Kennzahlkarten mit Auslastungsbalken, dichte Tabellen,
+einheitliche Radien/Fokusringe). Die VM-Liste sortiert nach jeder Spalte,
+filtert nach Status/Typ, sucht nach Name/VMID/Node und markiert CPU/RAM ab
+75 % bzw. 90 %. Geprüft per Playwright-Screenshots im Demomodus für Cloud,
+Ocean, Dusk und 390 px Breite.
+
+Backend: `ORBIT_TRUSTED_PROXIES` (Rechts-nach-links-Auswertung von
+X-Forwarded-For, nur von vertrauenswürdigen Proxys), HSTS bei HTTPS-Ursprung,
+Permissions-Policy, COOP, Audit `auth.login_failed` mit Client-IP, RFC-2231-
+`Content-Disposition`, wiederverwendete Validierungs-Regexe. Neue Go-Tests:
+Spoofing-Schutz, Begrenzung pro Client hinter einem Proxy, Header, Dateinamen.
+
+`go vet`, `go test -race ./...` und `npm test` bestanden. Keine Aktionen auf
+echten Hosts oder Gästen durchgeführt.

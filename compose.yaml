@@ -14,6 +14,7 @@ services:
       ORBIT_CATALOG_MODE: ${ORBIT_CATALOG_MODE:-web}
       ORBIT_CATALOG_URL: ${ORBIT_CATALOG_URL:-https://quadrix-hd.github.io/orbit-central/catalog.json}
       ORBIT_CA_FILE: ${ORBIT_CA_FILE:-}
+      ORBIT_TRUSTED_PROXIES: ${ORBIT_TRUSTED_PROXIES:-}
     volumes:
       - orbit-data:/data
       # Eigene CA: diese Zeile aktivieren und ORBIT_CA_FILE=/certs/proxmox-ca.pem setzen.

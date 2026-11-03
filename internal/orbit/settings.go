@@ -196,7 +196,7 @@ func (s *Server) settingsRoutes(w http.ResponseWriter, r *http.Request, d doc, c
 			handled = true
 			path := must(Backup(s.Store.Dir))
 			_ = s.Store.Audit("backup.created", "")
-			w.Header().Set("Content-Disposition", `attachment; filename="`+filepath.Base(path)+`"`)
+			w.Header().Set("Content-Disposition", attachment(filepath.Base(path)))
 			w.Header().Set("Content-Type", "application/gzip")
 			w.Header().Set("Cache-Control", "no-store")
 			http.ServeFile(w, r, path)

@@ -75,3 +75,137 @@ body{background:var(--bg);color:var(--text);font:14px/1.6 "Orbit Sans",system-ui
 .page:has(.console-panel) .object-tabs{position:sticky;top:72px;z-index:12}.console-panel{scroll-margin-top:150px}
 @media(max-width:760px){.page:has(.console-panel) .object-tabs{top:66px}.console-panel{scroll-margin-top:140px}}
 body.console-overlay-open{overflow:hidden}.console-panel.is-expanded{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;width:100%;height:100dvh;margin:0;border:0;border-radius:0;background:var(--panel)}.console-panel.is-expanded .console-screen{flex:1;height:auto;min-height:0}.console-panel.is-expanded .console-heading,.console-panel.is-expanded .console-controls,.console-panel.is-expanded .console-footer{flex-shrink:0}
+
+/* ==========================================================================
+   Orbit Enterprise Layer
+   Final, authoritative layer for shell, page chrome, cards and data tables.
+   Compact information density, neutral surfaces and consistent radii. All
+   colours derive from the theme tokens so Cloud, Ocean and Dusk stay intact.
+   ========================================================================== */
+:root{--radius:6px;--radius-lg:8px;--topbar-h:48px;--row-h:40px;--ok:#2f9e6f;--warn:#c98a1b;--crit:#d04a5a;--shadow-1:0 1px 2px rgb(16 24 40 / .05);--focus:0 0 0 3px color-mix(in srgb,var(--mint) 28%,transparent)}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
+
+/* Shell ------------------------------------------------------------------ */
+.prism-topbar{height:var(--topbar-h);box-shadow:none;border-bottom:1px solid rgb(0 0 0 / .12)}
+.prism-layout{padding-top:var(--topbar-h)}
+.prism-sidebar{top:var(--topbar-h)}
+.orbit-wordmark{font-size:21px}
+.topbar-product{font-weight:500;letter-spacing:.2px;opacity:.9}
+.topbar-demo{font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:3px 7px;border-radius:4px}
+.prism-sidebar nav{padding:8px 10px;overflow-y:auto}
+.prism-sidebar nav .navlabel{padding:16px 10px 6px;font-size:10px;font-weight:600;letter-spacing:1.2px;opacity:.6}
+.prism-sidebar nav .navlabel:first-child{padding-top:6px}
+.prism-sidebar nav button{min-height:34px;padding:7px 10px;margin:1px 0;gap:10px;font-size:13px;border-radius:var(--radius)}
+.prism-sidebar nav button .icon{width:16px;height:16px}
+.prism-sidebar nav button:hover:not(:disabled){background:rgb(255 255 255 / .08);color:#fff;border:0}
+.prism-sidebar nav button.active,.prism-sidebar nav button.active:hover:not(:disabled){background:rgb(255 255 255 / .14);color:#fff}
+.sidebar-footer{font-size:11px;min-height:40px}
+.page-titlebar{height:44px;padding-inline:24px;background:var(--panel);border-bottom:1px solid var(--line)}
+.page-titlebar>div>span:first-child,.page-titlebar .titlebar-divider{display:inline;color:var(--muted)}
+.page-titlebar b{font-size:13px;font-weight:600}
+.titlebar-status{display:flex;font-size:11px;color:var(--muted)}
+.live-badge{margin-right:12px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 10px}
+.page{padding:0 24px 64px}
+.contextbar{min-height:0;padding:10px 0;margin:0;border-bottom:1px solid var(--line)}
+.contextbar #compute-scope{min-height:28px;border-radius:var(--radius);border-color:var(--line);background:var(--panel);color:var(--text)}
+.last-refresh{font-size:11px;color:var(--muted)}
+.footer{margin-top:28px;padding-top:12px;font-size:11px}
+.task-dock{height:32px;font-size:11px;background:var(--panel);border-top:1px solid var(--line)}
+
+/* Page header ------------------------------------------------------------ */
+.pagehead{padding:18px 0 14px;margin-bottom:12px;gap:16px}
+.pagehead h1{font-size:20px;line-height:1.3;font-weight:650;letter-spacing:-.2px;margin:0 0 2px}
+.pagehead p{font-size:12.5px;line-height:1.5;margin:0;color:var(--muted)}
+.eyebrow{display:none}
+.dashboard-tabs{gap:22px;margin-bottom:16px}
+.dashboard-tabs button,.tabs button{min-height:36px;font-size:13px;padding:6px 0 9px}
+
+/* Controls --------------------------------------------------------------- */
+button{min-height:32px;padding:6px 12px;font-size:12.5px;font-weight:500;border-radius:var(--radius)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:0;box-shadow:var(--focus);border-color:var(--mint)}
+button:disabled{opacity:.5;cursor:not-allowed}
+.btn-icon{width:32px;padding:0}
+input,select,textarea{border-radius:var(--radius)}
+.search input{min-height:32px}
+
+/* Cards ------------------------------------------------------------------ */
+.panel,.settings-card,.module-panel{border-radius:var(--radius-lg);border:1px solid var(--line);box-shadow:var(--shadow-1);background:var(--panel)}
+.table-toolbar{padding:12px 16px}
+.table-toolbar h2,.panel h2{font-size:13.5px;font-weight:600}
+.stats{gap:12px;margin-bottom:16px}
+.stat,.stat:nth-child(1),.stat:nth-child(2),.stat:nth-child(3),.stat:nth-child(4){background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px 16px;box-shadow:var(--shadow-1)}
+.stat-top{font-size:12px;font-weight:500;color:var(--muted)}
+.stat-top .icon,.stat:nth-child(n) .icon{width:16px;height:16px;color:var(--muted)}
+.stat-value{font-size:26px;font-weight:600;letter-spacing:-.4px;margin:8px 0 8px;color:var(--text)}
+.stat-value small{font-size:13px;font-weight:500;color:var(--muted)}
+.stat-foot{font-size:11.5px;color:var(--muted)}
+.stat .usage-track{margin:0 0 8px}
+.stat.is-high .stat-value{color:var(--warn)}
+.stat.is-crit .stat-value{color:var(--crit)}
+.text-warn{color:var(--warn);font-weight:600}
+
+/* Data tables ------------------------------------------------------------ */
+.table-wrap{overflow:auto}
+table{font-size:12.5px}
+th{position:sticky;top:0;z-index:1;height:34px;padding:0 14px;font-size:11px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);background:var(--panel2);border-bottom:1px solid var(--line)}
+td{height:var(--row-h);padding:6px 14px;color:var(--text);border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb,var(--mint) 4%,transparent)}
+tbody tr.selected td{background:color-mix(in srgb,var(--mint) 8%,transparent)}
+:root[data-density=compact]{--row-h:32px}
+:root[data-density=compact] td{padding-block:3px}
+.num,td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.mono,.mono{font-family:inherit;font-variant-numeric:tabular-nums}
+.table-name{gap:10px}
+.table-symbol{width:26px;height:26px;border-radius:var(--radius)}
+.table-name small{font-size:11px}
+th.sortable{padding:0}
+th.sortable button{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:6px;width:100%;height:34px;padding:0 14px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit}
+th.sortable.num button{justify-content:flex-end}
+th.sortable button:hover{color:var(--text)}
+th.sortable button:focus-visible{box-shadow:inset var(--focus)}
+.sort-mark{font-size:10px;opacity:.35}
+th[aria-sort=ascending] .sort-mark,th[aria-sort=descending] .sort-mark{opacity:1;color:var(--mint)}
+th.usage-column{min-width:150px}
+.selection-column{width:40px}
+.data-table{min-width:880px}
+.data-table td{white-space:nowrap;overflow-wrap:normal;max-width:none}
+.data-table .status-tag{white-space:nowrap}
+.type-tag{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.4px;padding:2px 6px;border-radius:4px;border:1px solid var(--line);color:var(--muted);background:var(--panel2)}
+
+/* Utilisation bars ------------------------------------------------------- */
+.usage{display:grid;gap:4px;min-width:120px;max-width:220px}
+.usage-line{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.usage-value{font-variant-numeric:tabular-nums;font-weight:500}
+.usage-line small{font-size:11px;color:var(--muted);white-space:nowrap}
+.usage-track{display:block;height:5px;border-radius:999px;background:color-mix(in srgb,var(--muted) 18%,transparent);overflow:hidden}
+.usage-track i{display:block;height:100%;border-radius:inherit;background:var(--mint);transition:width .4s ease}
+.usage-track i.high{background:var(--warn)}
+.usage-track i.crit{background:var(--crit)}
+
+/* Status ----------------------------------------------------------------- */
+.status-tag{border-radius:999px;padding:1px 8px;font-size:11.5px;font-weight:500}
+
+/* List toolbar ----------------------------------------------------------- */
+.list-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 0 12px;padding:0;border:0}
+.list-toolbar .search{flex:0 1 300px;min-width:200px}
+.filter-chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-height:28px;padding:3px 10px;border-radius:999px;font-size:12px;gap:6px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+.chip.selected{background:var(--accent-soft);border-color:var(--mint);color:var(--mint)}
+.chip-count{font-size:11px;font-variant-numeric:tabular-nums;opacity:.75}
+.toolbar-count{margin-left:auto;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Settings --------------------------------------------------------------- */
+.settings-layout{gap:20px;grid-template-columns:200px minmax(0,1fr)}
+.settings-nav{gap:2px}
+.settings-nav button{min-height:34px;padding:7px 12px;border-radius:var(--radius)}
+.settings-card{padding:20px 22px}
+.settings-card h2{font-size:15px}
+
+/* Dusk tweaks ------------------------------------------------------------ */
+:root[data-theme=dusk]{--shadow-1:none}
+:root[data-theme=dusk] .stat,:root[data-theme=dusk] .stat:nth-child(n){background:var(--panel)}
+
+@media(max-width:950px){.settings-layout{grid-template-columns:1fr}}
+@media(max-width:760px){.page{padding:0 14px 56px}.page-titlebar{padding-inline:14px}.toolbar-count{margin-left:0}.list-toolbar .search{flex-basis:100%}}
+@media(prefers-reduced-motion:reduce){.usage-track i{transition:none}}

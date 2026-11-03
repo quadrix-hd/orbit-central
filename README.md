@@ -44,7 +44,7 @@ docker compose ps
 docker compose logs --tail=100 orbit
 ```
 
-Erwartet: `0.9.0`, ein gesunder Orbit-Container. Die bisherige Domain und dein
+Erwartet: die Version aus der Überschrift dieser Datei, ein gesunder Orbit-Container. Die bisherige Domain und dein
 Reverse-Proxy bleiben auf dem vorhandenen Orbit-Port. Keine Umleitung auf 8081
 und keine erneute Einrichtung notwendig.
 
@@ -73,7 +73,15 @@ ORBIT_PUBLIC_ORIGIN=http://10.0.10.20:8080
 
 Die Beispiel-IP durch die tatsächliche Docker-Host-IP ersetzen. Bei einem
 HTTPS-Proxy `ORBIT_PUBLIC_ORIGIN=https://orbit.example.net` setzen. Der Ursprung
-muss exakt zur Browseradresse passen. Danach:
+muss exakt zur Browseradresse passen. Bei HTTPS sendet Orbit zusätzlich
+`Strict-Transport-Security`.
+
+Läuft Orbit hinter einem Reverse-Proxy, dessen Adresse in
+`ORBIT_TRUSTED_PROXIES` eintragen (IP oder CIDR, kommagetrennt, z. B.
+`172.16.0.0/12`). Nur dann wertet Orbit `X-Forwarded-For` aus; Anmeldebegrenzung,
+Audit-Einträge (`auth.login`, `auth.login_failed`) und Zugriffsprotokoll nutzen
+so die echte Client-IP. Ohne Eintrag teilen sich alle Nutzer hinter dem Proxy
+eine Begrenzung. Ungültige Einträge verhindern den Start. Danach:
 
 ```bash
 docker compose up -d --build --wait

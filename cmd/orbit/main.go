@@ -49,6 +49,9 @@ func run() error {
 	if command != "serve" {
 		return orbit.CLI(os.Args[1:], env("ORBIT_DATA_DIR", "./data"))
 	}
+	if err := orbit.ValidateTrustedProxies(os.Getenv("ORBIT_TRUSTED_PROXIES")); err != nil {
+		return err
+	}
 	unlock, err := orbit.LockData(env("ORBIT_DATA_DIR", "./data"))
 	if err != nil {
 		return err
