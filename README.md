@@ -1,4 +1,4 @@
-# Orbit Central · Go 0.13.0
+# Orbit Central · Go 0.13.1
 
 Lokales Dashboard für Proxmox VE und optional Proxmox Backup Server.
 Der Server, die Proxmox-Anbindung, Aufgabenverarbeitung, Konsole, Registry und

@@ -166,3 +166,17 @@ volle Funktionsgleichheit wird ausdrücklich nicht als abgeschlossen ausgewiesen
 Reale Abnahme an Proxmox bleibt offen. Die Backend-/Versionsabhängigkeiten und
 fehlenden Produktfunktionen sind in ACCEPTANCE_MATRIX.md dokumentiert. Diese
 Prüfung bestätigt keine vollständige PegaProx-/Nutanix-Parität.
+
+## Go 0.13.1 · Formatierung und Konsole
+
+Gastnavigation als getrennte, horizontal überlaufende Tab-Leiste mit erkennbarem
+aktivem Bereich. Konsolenansicht mit kompakteren Messwertkarten, eigenem Header,
+Status-Badge, Darstellungsauswahl, Neuverbinden und Vollbild. Viewport-/Canvas-
+Regeln widersprechen der noVNC-Skalierung nicht mehr. Anpassungen für schmale
+Ansichten und gestapelte Gastübersichten.
+
+Regression im Live-Morphing korrigiert: Verbindungsstatus, CAD-Verfügbarkeit und
+Darstellungsmodus stammen aus dem Sitzungszustand und werden nicht bei jedem
+Messwert auf „wird vorbereitet“ zurückgesetzt. DOM-Tests prüfen „Verbunden“ nach
+Live-Updates, erhaltenes Canvas, Originalgröße und deaktiviertes CAD nach Trennung.
+`npm test` bestanden. Keine Aktionen auf echten Gästen durchgeführt.

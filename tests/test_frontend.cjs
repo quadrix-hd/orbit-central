@@ -5,6 +5,7 @@ function element(selector){if(!elements.has(selector))elements.set(selector,{inn
 const context={URLSearchParams,console,document:{querySelector:element,querySelectorAll:()=>[],activeElement:null,hidden:false},localStorage:{getItem:()=>null,setItem(){}},window:{scrollTo(){}},setInterval(){},setTimeout(){return 1},clearTimeout(){},crypto,AbortSignal,FormData:class{},Date};
 vm.createContext(context);for(const file of ['app.js','vm-workspace.js','infrastructure.js','management.js','live.js','bootstrap.js'])vm.runInContext(fs.readFileSync('dist/'+file,'utf8'),context);
 const run=source=>vm.runInContext(source,context);
+assert.equal(run('fmtBytes(0)'),'0 B');assert.equal(run('fmtBytes(536870912)'),'512,0 MiB');assert.equal(run('fmtBytes(4294967296)'),'4,0 GiB');
 assert.equal(run('state.mode'),'demo');assert.equal(run('state.authenticated'),true);
 for(const page of ['overview','clusters','vms','market','jobs','settings']){run(`nav('${page}')`);assert.ok(element('#app').innerHTML.includes('ORBIT CENTRAL'));assert.ok(!element('#app').innerHTML.includes('undefined'));}
 assert.ok(run("statusTag('offline')").includes('fail'));assert.ok(run("statusTag('unknown')").includes('neutral'));
@@ -42,7 +43,7 @@ run("openModal('<img src=x onerror=alert(1)>','Test','Text')");assert.ok(!elemen
     run('closeModal(true)');
   }
   await run("createVM('create')");assert.ok(element('#modal').innerHTML.includes('Ziele und Medien laden'));run('closeModal(true)');
-  run("state.objectTab='console';render()");await run('openConsole()');assert.ok(element('#console-state').textContent.includes('Live-Installation'));
+  run("state.objectTab='console';render()");await run('openConsole()');assert.ok(element('#console-state').textContent.includes('Beispielumgebung'));
   run("state.mode='live';state.authenticated=true");
   run("state.mode='demo';applyDemoWorkspace({action:'create',connection_id:'demo',node:'pve-01',vmid:333,name:'demo-created',cpu:2,ram:4,disk:32});loadDemo()");assert.ok(run("state.resources.some(v=>v.vmid===333)"));run("applyDemoWorkspace({action:'delete',connection_id:'demo',vmid:333});loadDemo()");assert.equal(run("state.resources.some(v=>v.vmid===333)"),false);run("state.mode='live'");
   // A pending request cannot be closed by Escape/backdrop/cancel; forced auth cleanup can.

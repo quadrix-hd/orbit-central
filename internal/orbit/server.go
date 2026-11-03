@@ -24,7 +24,7 @@ import (
 	"unicode/utf8"
 )
 
-const Version = "0.13.0"
+const Version = "0.13.1"
 
 type Server struct {
 	Store          *Store
