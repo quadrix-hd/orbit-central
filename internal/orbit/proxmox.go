@@ -155,7 +155,16 @@ func (p *Proxmox) once(ctx context.Context, c Connection, endpoint, method, path
 	if c.Kind == "pbs" {
 		auth = "PBSAPIToken=" + strings.Replace(token, "=", ":", 1)
 	}
-	req.Header.Set("Authorization", auth)
+	if t, ok := ctx.Value(ticketKey{}).(*pveTicket); ok {
+		// Ticket (user session) authentication, needed where Proxmox does
+		// not accept API tokens, e.g. the host shell.
+		if t.Ticket != "" {
+			req.AddCookie(&http.Cookie{Name: "PVEAuthCookie", Value: t.Ticket})
+			req.Header.Set("CSRFPreventionToken", t.CSRF)
+		}
+	} else {
+		req.Header.Set("Authorization", auth)
+	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 	resp, err := p.Client.Do(req)
@@ -196,6 +205,9 @@ func (p *Proxmox) once(ctx context.Context, c Connection, endpoint, method, path
 		privileges := privilegePattern.FindAllString(string(raw), 12)
 		if len(privileges) > 0 {
 			details += " Benötigte Rechte: " + strings.Join(privileges, ", ") + "."
+		}
+		if reason := proxmoxReason(resp.Status); reason != "" && len(details) == 0 {
+			details = " Proxmox: " + reason
 		}
 		if resp.StatusCode == 401 || resp.StatusCode == 403 {
 			return nil, problem("Proxmox verweigert den Zugriff. API-Token und Berechtigungen prüfen."+details, 502)
@@ -283,4 +295,33 @@ func (p *Proxmox) NetworkChanges(c Connection, path string) string {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.networkChanges[c.ID+"|"+path]
+}
+
+type ticketKey struct{}
+type pveTicket struct{ Ticket, CSRF string }
+
+// withTicket makes Proxmox calls on ctx use a user ticket instead of the API
+// token; an empty ticket sends no credentials (used for the login itself).
+func withTicket(ctx context.Context, ticket, csrf string) context.Context {
+	return context.WithValue(ctx, ticketKey{}, &pveTicket{Ticket: ticket, CSRF: csrf})
+}
+
+var reasonClean = regexp.MustCompile(`[^\p{L}\p{N} @!._:,;'()/<>=+-]`)
+
+// proxmoxReason extracts the human-readable reason Proxmox puts into the
+// HTTP status line ("500 value 'x' does not look like a valid user name").
+func proxmoxReason(status string) string {
+	parts := strings.SplitN(status, " ", 2)
+	if len(parts) < 2 {
+		return ""
+	}
+	r := strings.TrimSpace(reasonClean.ReplaceAllString(parts[1], ""))
+	switch strings.ToLower(r) {
+	case "", "internal server error", "bad request", "forbidden", "unauthorized", "not found", "ok":
+		return ""
+	}
+	if len([]rune(r)) > 220 {
+		r = string([]rune(r)[:220]) + "…"
+	}
+	return r
 }

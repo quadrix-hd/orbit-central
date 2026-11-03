@@ -779,3 +779,4 @@ dialog.modal-wide{width:min(1180px,96vw);max-width:96vw}
 @media(max-width:760px){.page-menu-panel{position:fixed;top:var(--bar-h);left:8px;right:8px;width:auto;grid-template-columns:1fr 1fr;max-height:calc(100vh - var(--bar-h) - 16px);overflow:auto}.page-menu>summary span{max-width:120px;overflow:hidden;text-overflow:ellipsis}}
 @media(max-width:480px){.page-menu-panel{grid-template-columns:1fr}}
 .table-wrap:has(details.action-menu[open]),.panel:has(details.action-menu[open]){overflow:visible}
+.shell-login{display:grid;gap:10px;align-content:center;max-width:620px;margin:0 auto;height:100%;padding:24px;color:#e5e7eb}.shell-login>b{font-size:16px}.shell-login p b{font-size:inherit}.shell-login p{margin:0;color:#9ca3af;font-size:13px}.shell-login label{color:#d1d5db}.shell-login .primary{justify-self:start}.shell-login code{color:#fdba74}
