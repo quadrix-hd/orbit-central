@@ -115,7 +115,7 @@ func (s *Server) submitJob(ctx context.Context, d doc) (doc, int) {
 	j["disk"] = disk
 	j["ssh"] = ssh
 	j["start"] = start
-	return s.insertTask("jobs", key, j)
+	return s.insertTask(ctx, "jobs", key, j)
 }
 func (s *Server) processJob(ctx context.Context, j doc) {
 	stage := str(j["stage"])
@@ -147,10 +147,7 @@ func (s *Server) processJob(ctx context.Context, j doc) {
 			s.persist("jobs", j, "Klon erstellt.")
 		}
 		if j["stage"] == "configure" {
-			config := configOf(s.call(ctx, c, "GET", base+"/config", nil))
-			if config["name"] != j["name"] {
-				fail("VM-Identität stimmt nicht mehr.")
-			}
+			config := s.guestConfig(ctx, c, base, "name", str(j["name"]))
 			cloud := false
 			for k, v := range config {
 				if diskPattern.MatchString(k) && strings.Contains(str(v), "cloudinit") {
@@ -191,10 +188,7 @@ func (s *Server) processJob(ctx context.Context, j doc) {
 			s.persist("jobs", j, "")
 		}
 		if j["stage"] == "resize" {
-			config := configOf(s.call(ctx, c, "GET", base+"/config", nil))
-			if config["name"] != j["name"] {
-				fail("VM-Identität stimmt nicht mehr.")
-			}
+			config := s.guestConfig(ctx, c, base, "name", str(j["name"]))
 			size := diskGiB(config, str(j["disk_device"]))
 			if num(j["disk"]) < size {
 				fail("Keine Verkleinerung eines Laufwerks möglich.")
@@ -220,10 +214,7 @@ func (s *Server) processJob(ctx context.Context, j doc) {
 		}
 		if j["stage"] == "start" {
 			if j["start"] == true {
-				vm := s.findVM(ctx, c, int(num(j["vmid"])), node)
-				if vm["name"] != j["name"] {
-					fail("VM-Identität stimmt nicht mehr.")
-				}
+				s.guestConfig(ctx, c, base, "name", str(j["name"]))
 				j["stage"] = "start_submitting"
 				s.persist("jobs", j, "")
 				j["upid"] = taskID(s.call(ctx, c, "POST", base+"/status/start", nil))

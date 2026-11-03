@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -19,7 +20,7 @@ import (
 type consoleGrant struct {
 	Session, CID, Endpoint, Node, Kind string
 	VMID, Port                         int
-	Ticket                             string
+	Ticket, AuthCookie                 string
 	Expires                            time.Time
 }
 type Console struct {
@@ -36,15 +37,34 @@ func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc {
 	cid := field(d, "connection_id", 64, `[a-zA-Z0-9-]+`)
 	node := field(d, "node", 64, `[a-zA-Z0-9_.-]+`)
-	id := integer(d, "vmid", 100, 999999999)
 	c := s.conn(cid)
-	vm := s.findVM(ctx, c, id, node)
-	kind := str(vm["type"])
-	if kind != "qemu" && kind != "lxc" {
-		fail("Nicht unterstützter Gasttyp.")
-	}
-	if kind == "lxc" && vm["status"] != "running" {
-		fail("Container-Konsole benötigt einen laufenden Container. Orbit startet ihn nicht automatisch.")
+	kind, id, cmd := "node", 0, ""
+	if d["shell"] == true {
+		// The host shell runs as the API token's user on the host and is
+		// therefore reserved for administrators.
+		if session.Role != "admin" || session.Token {
+			panic(problem("Die Host-Shell ist Administratoren vorbehalten.", 403))
+		}
+		if c.Kind != "pve" {
+			fail("Proxmox VE benötigt.")
+		}
+		s.online(ctx, c, node)
+		if v, ok := d["cmd"].(string); ok && v != "" {
+			if v != "upgrade" {
+				fail("Unbekannter Shell-Befehl.")
+			}
+			cmd = v
+		}
+	} else {
+		id = integer(d, "vmid", 100, 999999999)
+		vm := s.findVM(ctx, c, id, node)
+		kind = str(vm["type"])
+		if kind != "qemu" && kind != "lxc" {
+			fail("Nicht unterstützter Gasttyp.")
+		}
+		if kind == "lxc" && vm["status"] != "running" {
+			fail("Container-Konsole benötigt einen laufenden Container. Orbit startet ihn nicht automatisch.")
+		}
 	}
 	root := os.Getenv("ORBIT_NOVNC_ROOT")
 	if root == "" {
@@ -69,7 +89,7 @@ func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc
 		panic(problem("Zu viele offene Konsolen.", 429))
 	}
 	proxyArgs := doc{"websocket": 1}
-	if kind == "lxc" {
+	if kind != "qemu" {
 		if _, ok := d["width"]; ok {
 			proxyArgs["width"] = integer(d, "width", 16, 4096)
 		}
@@ -77,7 +97,29 @@ func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc
 			proxyArgs["height"] = integer(d, "height", 16, 2160)
 		}
 	}
-	result := configOf(s.call(ctx, c, "POST", baseVM(node, kind, id)+"/vncproxy", proxyArgs))
+	proxyPath := baseVM(node, kind, id) + "/vncproxy"
+	if kind == "node" {
+		proxyPath = "/nodes/" + url.PathEscape(node) + "/vncshell"
+		if cmd != "" {
+			proxyArgs["cmd"] = cmd
+		}
+	}
+	endpoint, authCookie := s.PVE.Active(c), ""
+	var result doc
+	if kind == "node" {
+		// Proxmox refuses API tokens for the host shell; log in as a user
+		// for this one session. The password is never stored.
+		ticket, csrf := s.pveLogin(ctx, c, endpoint, d)
+		authCookie = ticket
+		raw, err := s.PVE.once(withTicket(ctx, ticket, csrf), c, endpoint, "POST", proxyPath, values(proxyArgs))
+		if err != nil {
+			panic(err)
+		}
+		result = asDoc(raw)
+	} else {
+		result = configOf(s.call(ctx, c, "POST", proxyPath, proxyArgs))
+		endpoint = s.PVE.Active(c)
+	}
 	ticket, ok := result["ticket"].(string)
 	port := int(num(result["port"]))
 	if !ok || port < 1 || port > 65535 {
@@ -85,9 +127,13 @@ func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc
 	}
 	key := randomToken(32)
 	g.mu.Lock()
-	g.pending[key] = consoleGrant{Session: session.ID, CID: cid, Endpoint: s.PVE.Active(c), Node: node, Kind: kind, VMID: id, Port: port, Ticket: ticket, Expires: time.Now().Add(time.Minute)}
+	g.pending[key] = consoleGrant{Session: session.ID, CID: cid, Endpoint: endpoint, AuthCookie: authCookie, Node: node, Kind: kind, VMID: id, Port: port, Ticket: ticket, Expires: time.Now().Add(time.Minute)}
 	g.mu.Unlock()
-	_ = s.Store.Audit("console.open.requested", cid)
+	if kind == "node" {
+		_ = s.Store.AuditAs(session.Username, "node.shell.open", cid+"/"+node+" "+cmd)
+	} else {
+		_ = s.Store.Audit("console.open.requested", cid)
+	}
 	password := str(result["password"])
 	if password == "" {
 		password = ticket
@@ -139,8 +185,15 @@ func (s *Server) proxyConsole(w http.ResponseWriter, r *http.Request, key string
 	if err != nil {
 		return err
 	}
-	target := "wss://" + u.Host + "/api2/json" + baseVM(grant.Node, grant.Kind, grant.VMID) + "/vncwebsocket?" + query.Encode()
+	socketPath := baseVM(grant.Node, grant.Kind, grant.VMID) + "/vncwebsocket"
+	if grant.Kind == "node" {
+		socketPath = "/nodes/" + url.PathEscape(grant.Node) + "/vncwebsocket"
+	}
+	target := "wss://" + u.Host + "/api2/json" + socketPath + "?" + query.Encode()
 	header := http.Header{"Authorization": {"PVEAPIToken=" + token}, "Origin": {grant.Endpoint}}
+	if grant.AuthCookie != "" {
+		header = http.Header{"Cookie": {(&http.Cookie{Name: "PVEAuthCookie", Value: grant.AuthCookie}).String()}, "Origin": {grant.Endpoint}}
+	}
 	up, resp, err := dialer.DialContext(r.Context(), target, header)
 	if resp != nil && resp.Body != nil {
 		resp.Body.Close()
@@ -215,4 +268,41 @@ func (s *Server) novnc(w http.ResponseWriter, r *http.Request) error {
 	}
 	http.ServeFile(w, r, resolved)
 	return nil
+}
+
+var pveUserRE = regexp.MustCompile(`^[^\s:@!]{1,64}@[a-zA-Z0-9._-]{1,32}$`)
+
+// pveLogin obtains a Proxmox user ticket (with TOTP second factor when the
+// account requires it).
+func (s *Server) pveLogin(ctx context.Context, c Connection, endpoint string, d doc) (string, string) {
+	user := strings.TrimSpace(str(d["pve_username"]))
+	pass, _ := d["pve_password"].(string)
+	otp := strings.TrimSpace(str(d["pve_otp"]))
+	if user == "" || pass == "" {
+		panic(problem("Proxmox-Anmeldung erforderlich: Proxmox erlaubt die Host-Shell nicht mit API-Tokens.", 428))
+	}
+	if !pveUserRE.MatchString(user) || len(pass) > 512 || (otp != "" && !regexp.MustCompile(`^\d{6,8}$`).MatchString(otp)) {
+		fail("Benutzer im Format name@realm (z. B. root@pam) angeben.")
+	}
+	anon := withTicket(ctx, "", "")
+	raw, err := s.PVE.once(anon, c, endpoint, "POST", "/access/ticket", url.Values{"username": {user}, "password": {pass}})
+	if err != nil {
+		panic(problem("Proxmox-Anmeldung fehlgeschlagen. Benutzer und Passwort prüfen.", 422))
+	}
+	t := asDoc(raw)
+	if truth(t["NeedTFA"]) {
+		if otp == "" {
+			panic(problem("Proxmox verlangt für diesen Benutzer einen 2FA-Code.", 428))
+		}
+		raw, err = s.PVE.once(anon, c, endpoint, "POST", "/access/ticket", url.Values{"username": {user}, "tfa-challenge": {str(t["ticket"])}, "password": {"totp:" + otp}})
+		if err != nil {
+			panic(problem("2FA-Code von Proxmox abgelehnt.", 422))
+		}
+		t = asDoc(raw)
+	}
+	ticket, csrf := str(t["ticket"]), str(t["CSRFPreventionToken"])
+	if ticket == "" || csrf == "" {
+		panic(problem("Proxmox hat kein Anmeldeticket geliefert.", 502))
+	}
+	return ticket, csrf
 }

@@ -122,7 +122,7 @@ func (s *Server) extraRoutes(w http.ResponseWriter, r *http.Request, d doc, sess
 			a := configOf(configOf(snapshot["sources"])[sha])
 			file, cleanup := s.Catalog.asset(r.Context(), a)
 			defer cleanup()
-			w.Header().Set("Content-Disposition", `attachment; filename="`+str(a["name"])+`"`)
+			w.Header().Set("Content-Disposition", attachment(str(a["name"])))
 			w.Header().Set("Content-Type", "application/octet-stream")
 			http.ServeFile(w, r, file)
 		case strings.HasPrefix(path, "/api/connections/"):

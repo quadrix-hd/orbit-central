@@ -171,7 +171,43 @@ func (s *Server) persist(table string, d doc, message string) {
 	}
 }
 func now() float64 { return float64(time.Now().UnixMilli()) / 1000 }
-func (s *Server) insertTask(table, key string, d doc) (doc, int) {
+
+// reservations lists the VMIDs and names a task occupies: the guest it acts
+// on and, for clones, the new guest it will create.
+func reservations(d doc) ([]float64, []string) {
+	ids, names := []float64{num(d["vmid"])}, []string{str(d["name"])}
+	if d["action"] == "clone" {
+		args := configOf(d["args"])
+		ids = append(ids, num(args["newid"]))
+		names = append(names, defaultText(str(args["name"]), str(args["hostname"])))
+	}
+	return ids, names
+}
+
+func reservationsOverlap(a, b doc) bool {
+	aIDs, aNames := reservations(a)
+	bIDs, bNames := reservations(b)
+	for _, x := range aIDs {
+		for _, y := range bIDs {
+			if x == y {
+				return true
+			}
+		}
+	}
+	for _, x := range aNames {
+		for _, y := range bNames {
+			if x != "" && x == y {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (s *Server) insertTask(ctx context.Context, table, key string, d doc) (doc, int) {
+	if who := requestUser(ctx); who != "" {
+		d["requested_by"] = who
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if old := s.requestDoc(table, key); old != nil {
@@ -179,7 +215,7 @@ func (s *Server) insertTask(table, key string, d doc) (doc, int) {
 	}
 	for _, t := range []string{"jobs", "operations"} {
 		for _, other := range s.allDocs(t) {
-			if pending(other) && other["connection_id"] == d["connection_id"] && (num(other["vmid"]) == num(d["vmid"]) || other["name"] == d["name"]) {
+			if pending(other) && other["connection_id"] == d["connection_id"] && reservationsOverlap(other, d) {
 				panic(problem("VMID oder Name ist durch eine andere Aufgabe reserviert.", 409))
 			}
 		}
@@ -395,15 +431,15 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 				a["boot"] = "order=ide2;scsi0"
 			}
 		}
-		return s.insertTask("operations", key, newTask(cid, node, name, action, id, a))
+		return s.insertTask(ctx, "operations", key, newTask(cid, node, name, action, id, a))
 	}
 	vm := s.findVM(ctx, c, id, node)
 	name := field(d, "confirm_name", 100, "")
-	if name != vm["name"] || truth(vm["template"]) {
+	if name != vm["name"] || (truth(vm["template"]) && action != "clone") {
 		panic(problem("VM-Name stimmt nicht überein oder Gast ist eine Vorlage.", 409))
 	}
 	kind := str(vm["type"])
-	if kind == "lxc" && !contains("start,shutdown,reboot,snapshot,backup,configure,migrate,ha", action) {
+	if kind == "lxc" && !contains("start,shutdown,reboot,stop,snapshot,backup,configure,migrate,ha,clone,template,tags,snapshot_delete", action) {
 		fail("Diese Aktion wird für LXC nicht unterstützt.")
 	}
 	a := doc{}
@@ -434,8 +470,14 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 		a["target"] = target
 		if kind == "qemu" {
 			a["online"] = boolInt(vm["status"] == "running")
+			if truth(d["with_local_disks"]) {
+				a["with-local-disks"] = 1
+			}
 		} else if vm["status"] != "stopped" {
-			fail("LXC-Migration benötigt einen gestoppten Container.")
+			if d["restart"] != true {
+				fail("LXC-Migration benötigt einen gestoppten Container oder eine Neustart-Migration.")
+			}
+			a["restart"] = 1
 		}
 	case "configure":
 		if vm["status"] != "stopped" {
@@ -449,9 +491,60 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 		if vm["status"] == "running" {
 			fail("Gast läuft bereits.")
 		}
-	case "shutdown", "reboot":
+	case "shutdown", "reboot", "reset", "suspend":
 		if vm["status"] != "running" {
 			fail("Gast läuft nicht.")
+		}
+	case "stop", "resume":
+		// A paused QEMU guest is still reported as running by /cluster/resources.
+		if vm["status"] == "stopped" {
+			fail("Gast ist bereits gestoppt.")
+		}
+		if action == "stop" && !boolean(d, "acknowledge") {
+			fail("Hartes Ausschalten ausdrücklich bestätigen.")
+		}
+	case "template":
+		if vm["status"] != "stopped" {
+			fail("Nur ein gestoppter Gast kann in eine Vorlage umgewandelt werden.")
+		}
+		if !boolean(d, "acknowledge") {
+			fail("Umwandlung in eine Vorlage ausdrücklich bestätigen. Sie ist nicht umkehrbar.")
+		}
+	case "clone":
+		newID := integer(d, "newid", 100, 999999999)
+		newName := field(d, "new_name", 63, `[a-zA-Z][a-zA-Z0-9-]{0,62}`)
+		full := boolean(d, "full")
+		if !full && !truth(vm["template"]) {
+			fail("Verknüpfte Klone sind nur von Vorlagen möglich.")
+		}
+		s.unused(ctx, c, newID, newName)
+		nameKey := "name"
+		if kind == "lxc" {
+			nameKey = "hostname"
+		}
+		a = doc{"newid": newID, nameKey: newName, "full": boolInt(full)}
+		if target := str(d["target"]); target != "" && target != node {
+			target = field(d, "target", 64, `[a-zA-Z0-9_.-]+`)
+			s.online(ctx, c, target)
+			a["target"] = target
+		}
+		if store := str(d["storage"]); store != "" {
+			if !full {
+				fail("Ziel-Storage ist nur für vollständige Klone wählbar.")
+			}
+			store = field(d, "storage", 64, `[a-zA-Z0-9_.-]+`)
+			s.storeTarget(ctx, c, defaultText(str(a["target"]), node), store, "images")
+			a["storage"] = store
+		}
+	case "tags":
+		raw, ok := d["tags"].(string)
+		if !ok || len(raw) > 1000 {
+			fail("Ungültige Tags.")
+		}
+		if tags := normalizeTags(raw); len(tags) > 0 {
+			a["tags"] = strings.Join(tags, ";")
+		} else {
+			a["delete"] = "tags"
 		}
 	case "disk_add", "disk_resize", "nic", "metadata", "iso", "rollback", "snapshot_delete", "delete":
 		a = s.hardwareArgs(ctx, c, vm, d, action)
@@ -460,7 +553,7 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 	}
 	op := newTask(cid, node, name, action, id, a)
 	op["guest_type"] = kind
-	return s.insertTask("operations", key, op)
+	return s.insertTask(ctx, "operations", key, op)
 }
 func defaultText(v, fallback string) string {
 	if v == "" {
@@ -476,12 +569,16 @@ func boolInt(v bool) int {
 }
 func (s *Server) hardwareArgs(ctx context.Context, c Connection, vm, d doc, action string) doc {
 	node := str(vm["node"])
-	base := baseVM(node, "qemu", int(num(vm["vmid"])))
+	kind, nameKey := defaultText(str(vm["type"]), "qemu"), "name"
+	if kind == "lxc" {
+		nameKey = "hostname"
+	}
+	base := baseVM(node, kind, int(num(vm["vmid"])))
 	config := configOf(s.call(ctx, c, "GET", base+"/config", nil))
-	if config["name"] != vm["name"] {
+	if config[nameKey] != vm["name"] {
 		fail("VM-Identität hat sich geändert.")
 	}
-	if action != "metadata" && vm["status"] != "stopped" {
+	if action != "metadata" && action != "snapshot_delete" && vm["status"] != "stopped" {
 		fail("Änderung benötigt eine gestoppte VM.")
 	}
 	a := doc{"digest": config["digest"]}
@@ -636,10 +733,13 @@ func (s *Server) processOperation(ctx context.Context, op doc) {
 				}
 			} else {
 				vm := s.findVM(ctx, c, int(num(op["vmid"])), node)
-				if vm["name"] != op["name"] || vm["type"] != kind || truth(vm["template"]) {
+				if vm["name"] != op["name"] || vm["type"] != kind || (truth(vm["template"]) && action != "clone") {
 					fail("Gastidentität hat sich geändert.")
 				}
-				if contains("configure,disk_add,disk_resize,nic,iso,rollback,snapshot_delete,delete", action) && vm["status"] != "stopped" {
+				if action == "clone" {
+					s.unused(ctx, c, int(num(args["newid"])), defaultText(str(args["name"]), str(args["hostname"])))
+				}
+				if contains("configure,disk_add,disk_resize,nic,iso,rollback,delete,template", action) && vm["status"] != "stopped" {
 					fail("Gast ist inzwischen gestartet. Änderung abgebrochen.")
 				}
 			}
@@ -667,7 +767,7 @@ func (s *Server) processOperation(ctx context.Context, op doc) {
 				synchronous = true
 			case "create", "restore", "lxc_create", "lxc_restore":
 				path = "/nodes/" + url.PathEscape(node) + "/" + kind
-			case "configure", "metadata", "nic", "iso":
+			case "configure", "metadata", "nic", "iso", "tags":
 				method = "PUT"
 				path = base + "/config"
 				synchronous = true
@@ -699,8 +799,11 @@ func (s *Server) processOperation(ctx context.Context, op doc) {
 			case "delete":
 				method = "DELETE"
 				path = base
-			case "snapshot", "migrate":
+			case "snapshot", "migrate", "clone":
 				path = base + "/" + action
+			case "template":
+				path = base + "/template"
+				synchronous = true
 			case "backup":
 				path = "/nodes/" + url.PathEscape(node) + "/vzdump"
 			}
@@ -778,6 +881,9 @@ func (s *Server) RunWorkers(ctx context.Context) {
 		}
 	}()
 	go func() { defer s.workers.Done(); s.Catalog.Run(ctx) }()
+	s.RunAlerts(ctx)
+	s.RunSchedules(ctx)
+	s.RunMaintenance(ctx)
 }
 
 func (s *Server) WaitWorkers() { s.workers.Wait() }

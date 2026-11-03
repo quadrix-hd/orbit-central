@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata" // zone data for TZ=… in the slim image
 
 	"github.com/quadrix-hd/orbit-central/internal/orbit"
 )
@@ -48,6 +49,9 @@ func run() error {
 	}
 	if command != "serve" {
 		return orbit.CLI(os.Args[1:], env("ORBIT_DATA_DIR", "./data"))
+	}
+	if err := orbit.ValidateTrustedProxies(os.Getenv("ORBIT_TRUSTED_PROXIES")); err != nil {
+		return err
 	}
 	unlock, err := orbit.LockData(env("ORBIT_DATA_DIR", "./data"))
 	if err != nil {

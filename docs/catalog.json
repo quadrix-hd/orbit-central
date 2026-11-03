@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "revision": "2026-11-02.go.1",
+  "revision": "2026-11-03.1",
   "packages": [
     {
       "id": "ubuntu-server",
@@ -171,6 +171,653 @@
         "packages": [
           "qemu-guest-agent",
           "redis-server"
+        ]
+      }
+    },
+    {
+      "id": "mariadb",
+      "name": "MariaDB",
+      "version": "1.0.0",
+      "description": "MariaDB-Datenbankserver aus den Paketquellen, nur lokal erreichbar. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Datenbanken",
+      "assets": [
+        {
+          "name": "mariadb.json",
+          "url": "packages/mariadb.json",
+          "size": 746,
+          "sha256": "dfbac745bec290f921c74949efd9a33641e6098dbee9cd24c7f4487e659c474a"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "mariadb-server"
+        ]
+      }
+    },
+    {
+      "id": "apache",
+      "name": "Apache HTTP Server",
+      "version": "1.0.0",
+      "description": "Apache2 als klassischer Webserver. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Anwendungen",
+      "assets": [
+        {
+          "name": "apache.json",
+          "url": "packages/apache.json",
+          "size": 749,
+          "sha256": "2aca9e0a45da9c257912ad7b8f23a903d3150d6b78d0d44223f0eb8e19359bcc"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "apache2"
+        ]
+      }
+    },
+    {
+      "id": "haproxy",
+      "name": "HAProxy Load Balancer",
+      "version": "1.0.0",
+      "description": "HAProxy als TCP/HTTP-Load-Balancer; Konfiguration unter /etc/haproxy. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Netzwerk",
+      "assets": [
+        {
+          "name": "haproxy.json",
+          "url": "packages/haproxy.json",
+          "size": 753,
+          "sha256": "96f80e227167e670f72857e1a55aab2a99cb78ef44a1506a1ec2001146619f7d"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "haproxy"
+        ]
+      }
+    },
+    {
+      "id": "prometheus",
+      "name": "Prometheus Monitoring",
+      "version": "1.0.0",
+      "description": "Prometheus mit Node Exporter für Metriken der eigenen Umgebung (Port 9090). Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Monitoring",
+      "assets": [
+        {
+          "name": "prometheus.json",
+          "url": "packages/prometheus.json",
+          "size": 793,
+          "sha256": "382470ce5af4fa35f3d30036d2780d53321949f72919ee596a9184f1cca99fc6"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "prometheus",
+          "prometheus-node-exporter"
+        ]
+      }
+    },
+    {
+      "id": "zabbix-agent",
+      "name": "Zabbix-Agent-Basis",
+      "version": "1.0.0",
+      "description": "Ubuntu mit Zabbix Agent; Server-Adresse danach in /etc/zabbix eintragen. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Monitoring",
+      "assets": [
+        {
+          "name": "zabbix-agent.json",
+          "url": "packages/zabbix-agent.json",
+          "size": 760,
+          "sha256": "e4b75a16e8b5f4634e7de6a6f2dcb46777b030170bc7d2052459d2cebbd40315"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "zabbix-agent"
+        ]
+      }
+    },
+    {
+      "id": "mosquitto",
+      "name": "Mosquitto MQTT",
+      "version": "1.0.0",
+      "description": "Eclipse Mosquitto als MQTT-Broker für IoT und Automatisierung. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Anwendungen",
+      "assets": [
+        {
+          "name": "mosquitto.json",
+          "url": "packages/mosquitto.json",
+          "size": 777,
+          "sha256": "e4642e4818cf19b78a64dd5f7b369d66d97ab481ae1776424b59d5677acdc30d"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "mosquitto",
+          "mosquitto-clients"
+        ]
+      }
+    },
+    {
+      "id": "samba",
+      "name": "Samba-Dateiserver",
+      "version": "1.0.0",
+      "description": "Samba für Windows-Freigaben; Freigaben in /etc/samba/smb.conf anlegen. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Speicher",
+      "assets": [
+        {
+          "name": "samba.json",
+          "url": "packages/samba.json",
+          "size": 745,
+          "sha256": "a0b096e97627daac1a944636d7768198d4793f5c6301aa95d03da10541155376"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "samba"
+        ]
+      }
+    },
+    {
+      "id": "nfs-server",
+      "name": "NFS-Server",
+      "version": "1.0.0",
+      "description": "NFS-Kernel-Server für Linux-Freigaben; Exporte in /etc/exports. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Speicher",
+      "assets": [
+        {
+          "name": "nfs-server.json",
+          "url": "packages/nfs-server.json",
+          "size": 755,
+          "sha256": "24a7baf0fb60640b991416210fe3159101a106ff22da92198d44169249c6b0f4"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "nfs-kernel-server"
+        ]
+      }
+    },
+    {
+      "id": "memcached",
+      "name": "Memcached",
+      "version": "1.0.0",
+      "description": "Memcached als In-Memory-Cache (lokal gebunden). Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Datenbanken",
+      "assets": [
+        {
+          "name": "memcached.json",
+          "url": "packages/memcached.json",
+          "size": 745,
+          "sha256": "06fdc258e86e87a7d190df8e3ce521a8955250019ce094d6931c8b6924e10850"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "memcached"
+        ]
+      }
+    },
+    {
+      "id": "rabbitmq",
+      "name": "RabbitMQ",
+      "version": "1.0.0",
+      "description": "RabbitMQ-Message-Broker aus den Paketquellen. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Anwendungen",
+      "assets": [
+        {
+          "name": "rabbitmq.json",
+          "url": "packages/rabbitmq.json",
+          "size": 749,
+          "sha256": "0d1e07a0d4cadab5fcac5f68f7547cf80c305c03c8acedb343497c2a7f484b3c"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "rabbitmq-server"
+        ]
+      }
+    },
+    {
+      "id": "bind9",
+      "name": "BIND9 DNS-Server",
+      "version": "1.0.0",
+      "description": "BIND9 als autoritativer oder rekursiver DNS-Server. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Netzwerk",
+      "assets": [
+        {
+          "name": "bind9.json",
+          "url": "packages/bind9.json",
+          "size": 765,
+          "sha256": "851163fe02ab6266d5e4c4664ba027f2d5110d42085f775c76c95ba860474dc7"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "bind9",
+          "bind9-utils"
+        ]
+      }
+    },
+    {
+      "id": "squid",
+      "name": "Squid Proxy",
+      "version": "1.0.0",
+      "description": "Squid als HTTP-Proxy mit Standardkonfiguration (Port 3128). Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Netzwerk",
+      "assets": [
+        {
+          "name": "squid.json",
+          "url": "packages/squid.json",
+          "size": 739,
+          "sha256": "6ebb80ddd92813b682c41008b9f719a5ff1ac3fe1ec5c5466f03a464d5289d4d"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "squid"
+        ]
+      }
+    },
+    {
+      "id": "portainer",
+      "name": "Portainer CE",
+      "version": "1.0.0",
+      "description": "Docker-Host mit Portainer CE zur Container-Verwaltung (HTTPS-Port 9443). Portainer erhält Zugriff auf den Docker-Socket. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Container",
+      "assets": [
+        {
+          "name": "portainer.json",
+          "url": "packages/portainer.json",
+          "size": 1015,
+          "sha256": "0e104b97eb22b2e9a524494710a0cbd39ba322140db9f6eb904f78c422f64e7e"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ],
+        "containers": [
+          {
+            "name": "portainer",
+            "image": "portainer/portainer-ce:2.21.5",
+            "ports": [
+              "9443:9443"
+            ],
+            "volumes": [
+              "/var/run/docker.sock:/var/run/docker.sock",
+              "portainer-data:/data"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "uptime-kuma",
+      "name": "Uptime Kuma",
+      "version": "1.0.0",
+      "description": "Uptime Kuma zur Erreichbarkeitsüberwachung von Diensten (Port 3001). Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Monitoring",
+      "assets": [
+        {
+          "name": "uptime-kuma.json",
+          "url": "packages/uptime-kuma.json",
+          "size": 964,
+          "sha256": "4ffe105c18dac45bb6f9f8faf06f198aaadb7f2bec96322bc675dd931bba1694"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ],
+        "containers": [
+          {
+            "name": "uptime-kuma",
+            "image": "louislam/uptime-kuma:1",
+            "ports": [
+              "3001:3001"
+            ],
+            "volumes": [
+              "uptime-kuma-data:/app/data"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "1.0.0",
+      "description": "Grafana OSS für Dashboards (Port 3000, erster Login admin/admin). Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Monitoring",
+      "assets": [
+        {
+          "name": "grafana.json",
+          "url": "packages/grafana.json",
+          "size": 959,
+          "sha256": "69e236a1344390847a471597b8354ec029a34ed6d6c02bb0b75f9d4dc33a5071"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ],
+        "containers": [
+          {
+            "name": "grafana",
+            "image": "grafana/grafana-oss:11.3.0",
+            "ports": [
+              "3000:3000"
+            ],
+            "volumes": [
+              "grafana-data:/var/lib/grafana"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "gitea",
+      "name": "Gitea",
+      "version": "1.0.0",
+      "description": "Gitea als selbst gehosteter Git-Server mit SQLite (Web 3000, SSH 2222). Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Entwicklung",
+      "assets": [
+        {
+          "name": "gitea.json",
+          "url": "packages/gitea.json",
+          "size": 1022,
+          "sha256": "379bde60cef666b2dacdae1f374b65354691ccce408a5d8cf1027c35de38c196"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ],
+        "containers": [
+          {
+            "name": "gitea",
+            "image": "gitea/gitea:1.22",
+            "ports": [
+              "3000:3000",
+              "2222:22"
+            ],
+            "volumes": [
+              "gitea-data:/data"
+            ],
+            "env": [
+              "USER_UID=1000",
+              "USER_GID=1000"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "nginx-proxy-manager",
+      "name": "Nginx Proxy Manager",
+      "version": "1.0.0",
+      "description": "Reverse Proxy mit Let’s-Encrypt-Oberfläche (Ports 80/443, Verwaltung 81). Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Netzwerk",
+      "assets": [
+        {
+          "name": "nginx-proxy-manager.json",
+          "url": "packages/nginx-proxy-manager.json",
+          "size": 1040,
+          "sha256": "f1f46d3d1b11c1c0d45d52f7dcd48e328f86ce147715b2d6924ec21eed104023"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ],
+        "containers": [
+          {
+            "name": "npm",
+            "image": "jc21/nginx-proxy-manager:2",
+            "ports": [
+              "80:80",
+              "81:81",
+              "443:443"
+            ],
+            "volumes": [
+              "npm-data:/data",
+              "npm-letsencrypt:/etc/letsencrypt"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "vaultwarden",
+      "name": "Vaultwarden",
+      "version": "1.0.0",
+      "description": "Bitwarden-kompatibler Passwortserver (Port 8080). Nur hinter HTTPS-Proxy produktiv nutzen. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Sicherheit",
+      "assets": [
+        {
+          "name": "vaultwarden.json",
+          "url": "packages/vaultwarden.json",
+          "size": 961,
+          "sha256": "58ea52401d9e521e7f788271affcef320047d4900c6431888a9fd33163a97b05"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ],
+        "containers": [
+          {
+            "name": "vaultwarden",
+            "image": "vaultwarden/server:1.32.5",
+            "ports": [
+              "8080:80"
+            ],
+            "volumes": [
+              "vaultwarden-data:/data"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "nextcloud",
+      "name": "Nextcloud",
+      "version": "1.0.0",
+      "description": "Nextcloud mit integrierter SQLite für kleine Teams (Port 8080). Für viele Benutzer externe Datenbank verwenden. Cloud-Image-Import mit Cloud-init (VE 9+). Gastsoftware benötigt beim ersten Start Internet.",
+      "category": "Anwendungen",
+      "assets": [
+        {
+          "name": "nextcloud.json",
+          "url": "packages/nextcloud.json",
+          "size": 955,
+          "sha256": "62bac27693c93525435b64b8bebebf1866ae571af5514070277fde9fb6a484de"
+        },
+        {
+          "name": "ubuntu-24.04-cloud.qcow2",
+          "url": "https://cloud-images.ubuntu.com/noble/20261017/noble-server-cloudimg-amd64.img",
+          "size": 621284352,
+          "sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94"
+        }
+      ],
+      "deployment": {
+        "kind": "cloud-image",
+        "image_sha256": "04e8f2461a16a44e78a370284471f29616cdd9baf1893df25807b71f985b6c94",
+        "packages": [
+          "qemu-guest-agent",
+          "docker.io"
+        ],
+        "containers": [
+          {
+            "name": "nextcloud",
+            "image": "nextcloud:30-apache",
+            "ports": [
+              "8080:80"
+            ],
+            "volumes": [
+              "nextcloud-data:/var/www/html"
+            ]
+          }
         ]
       }
     }

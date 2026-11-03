@@ -227,7 +227,9 @@ func ResetAccess(dir string) error {
 	return guarded(func() {
 		db := must(sql.Open("sqlite", filepath.Join(dir, "orbit.db")))
 		defer db.Close()
-		if _, err := db.Exec("DELETE FROM settings WHERE key='password'; DELETE FROM sessions;"); err != nil {
+		// Ends every session and re-opens the one-time setup, which sets a new
+		// password for the "admin" account. Other users are kept.
+		if _, err := db.Exec("DELETE FROM settings WHERE key='password'; DELETE FROM sessions; INSERT INTO settings(key,value) VALUES('reset_pending','1') ON CONFLICT(key) DO UPDATE SET value='1';"); err != nil {
 			panic(err)
 		}
 		if err := os.WriteFile(filepath.Join(dir, "setup-token"), []byte(randomToken(32)), 0600); err != nil {

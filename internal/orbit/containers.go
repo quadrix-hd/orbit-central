@@ -60,7 +60,7 @@ func (s *Server) submitContainer(ctx context.Context, d doc, key string) (doc, i
 	}
 	op := newTask(cid, node, name, action, id, a)
 	op["guest_type"] = "lxc"
-	return s.insertTask("operations", key, op)
+	return s.insertTask(ctx, "operations", key, op)
 }
 func (s *Server) containerPreflight(ctx context.Context, c Connection, op doc) {
 	a := configOf(op["args"])

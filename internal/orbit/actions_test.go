@@ -17,6 +17,7 @@ type fakePVE struct {
 	result    any
 	status    string
 	lose      bool
+	snaps     []any
 }
 
 func actionServer(t *testing.T) (*Server, *fakePVE) {
@@ -56,16 +57,21 @@ func actionServer(t *testing.T) (*Server, *fakePVE) {
 				data = []any{doc{"iface": "vmbr0", "type": "bridge"}}
 			case strings.HasSuffix(path, "/config"):
 				data = f.config
+			case strings.HasSuffix(path, "/status/current"):
+				data = doc{"status": "running"}
 			case strings.Contains(path, "/tasks/"):
 				data = doc{"status": "stopped", "exitstatus": "OK"}
 			case strings.HasSuffix(path, "/snapshot"):
 				data = []any{doc{"name": "snap1"}}
+				if f.snaps != nil {
+					data = f.snaps
+				}
 			case path == "/cluster/ha/resources":
 				data = []any{}
 			case path == "/cluster/nextid":
 				data = "101"
 			case strings.HasSuffix(path, "/content"):
-				data = []any{doc{"volid": "local:iso/test.iso"}, doc{"volid": "local:backup/vzdump-qemu-100.vma.zst"}}
+				data = []any{doc{"volid": "local:iso/test.iso", "content": "iso"}, doc{"volid": "local:backup/vzdump-qemu-100.vma.zst", "content": "backup", "vmid": 100, "ctime": 1700000000}}
 			default:
 				data = []any{}
 			}
@@ -164,7 +170,7 @@ func TestIdempotentRequestsAndCrossQueueReservation(t *testing.T) {
 		t.Fatal("missing snapshot input accepted")
 	}
 	j := newTask("test", "node1", "another", "clone", 100, nil)
-	if err = guarded(func() { s.insertTask("jobs", randomID(), j) }); err == nil {
+	if err = guarded(func() { s.insertTask(context.Background(), "jobs", randomID(), j) }); err == nil {
 		t.Fatal("cross-queue conflict accepted")
 	}
 }
@@ -222,7 +228,7 @@ func TestJobCrashMarkersNeverDispatch(t *testing.T) {
 		s, f := actionServer(t)
 		j := newTask("test", "node1", "vm-one", "clone", 100, nil)
 		j["stage"] = stage
-		_ = guarded(func() { s.insertTask("jobs", randomID(), j) })
+		_ = guarded(func() { s.insertTask(context.Background(), "jobs", randomID(), j) })
 		s.processJob(context.Background(), j)
 		if j["status"] != "needs_attention" || len(f.writes) != 0 {
 			t.Fatal(stage, j)

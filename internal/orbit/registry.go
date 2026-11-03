@@ -8,33 +8,101 @@ import (
 	"encoding/json"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 )
 
+// nodeConnection returns a connection whose API endpoint terminates on the
+// given node. File uploads (cloud images, cloud-init seed ISOs) must reach the
+// node that owns the target storage, so the cluster proxy is not used for them.
+// Configured endpoints are tried first; then the node address reported by the
+// cluster itself and a hostname derived from the connection URL. An endpoint
+// is only accepted when it presents a trusted certificate and reports itself as
+// the requested node.
 func (s *Server) nodeConnection(ctx context.Context, c Connection, node string) Connection {
-	for _, endpoint := range must(ValidateEndpoints(c.URL, c.Endpoints)) {
+	try := func(endpoint string) (Connection, bool) {
 		candidate := c
 		candidate.URL = endpoint
 		candidate.Endpoints = nil
 		data, err := s.PVE.once(ctx, candidate, endpoint, "GET", "/cluster/status", nil)
 		if err != nil {
-			continue
+			return candidate, false
 		}
 		for _, row := range objects(data) {
 			if row["type"] == "node" && row["name"] == node && truth(row["local"]) {
-				return candidate
+				return candidate, true
+			}
+		}
+		return candidate, false
+	}
+	configured := must(ValidateEndpoints(c.URL, c.Endpoints))
+	for _, endpoint := range configured {
+		if pin, ok := try(endpoint); ok {
+			return pin
+		}
+	}
+	tried := []string{}
+	for _, endpoint := range s.discoverNodeEndpoints(ctx, c, node) {
+		if slices.Contains(configured, endpoint) {
+			continue
+		}
+		tried = append(tried, endpoint)
+		if pin, ok := try(endpoint); ok {
+			return pin
+		}
+	}
+	message := "Node " + node + " ist über keine API-Adresse direkt erreichbar."
+	if len(tried) > 0 {
+		message += " Geprüft: " + strings.Join(tried, ", ") + " (Netzwerk oder Zertifikat passt nicht)."
+	}
+	message += " Adresse dieses Nodes in der Verbindung als zusätzlichen Endpunkt eintragen, z. B. https://<IP>:8006; das Zertifikat muss zu dieser Adresse passen."
+	fail(message)
+	return c
+}
+
+// discoverNodeEndpoints derives candidate API addresses for a cluster member
+// from /cluster/status (node IP) and from the naming scheme of the connection
+// URL (pve1.example.lan -> <node>.example.lan). Port and scheme follow the
+// configured connection.
+func (s *Server) discoverNodeEndpoints(ctx context.Context, c Connection, node string) []string {
+	base, err := url.Parse(c.URL)
+	if err != nil {
+		return nil
+	}
+	port := base.Port()
+	if port == "" {
+		port = "8006"
+	}
+	out := []string{}
+	add := func(host string) {
+		endpoint := "https://" + net.JoinHostPort(host, port)
+		if _, e := ValidateEndpoints(endpoint, nil); e == nil && !slices.Contains(out, endpoint) {
+			out = append(out, endpoint)
+		}
+	}
+	if data, e := s.PVE.Call(ctx, c, "GET", "/cluster/status", nil); e == nil {
+		for _, row := range objects(data) {
+			if row["type"] == "node" && row["name"] == node {
+				if ip := net.ParseIP(str(row["ip"])); ip != nil {
+					add(ip.String())
+				}
 			}
 		}
 	}
-	fail("Gültige HTTPS-Adresse des Ziel-Nodes als Cluster-Endpunkt hinterlegen.")
-	return c
+	if host := base.Hostname(); net.ParseIP(host) == nil {
+		if parts := strings.SplitN(host, ".", 2); len(parts) == 2 && taskNodePattern.MatchString(node) {
+			add(node + "." + parts[1])
+		}
+	}
+	return out
 }
 func (s *Server) registryTargets(ctx context.Context, c Connection, node string) doc {
 	if c.Kind != "pve" {
@@ -111,29 +179,33 @@ func (s *Server) submitRegistry(ctx context.Context, d doc, key string) (doc, in
 	a["disk"] = integer(d, "disk", 8, 65536)
 	a["image"] = configOf(sources[str(dep["image_sha256"])])
 	a["packages"] = dep["packages"]
+	if list := anyList(dep["containers"]); len(list) > 0 {
+		a["containers"] = list
+	}
 	a["package_id"] = p["id"]
 	a["package_version"] = p["version"]
 	a["endpoint"] = targets["endpoint"]
 	a["mode"] = s.Catalog.Mode()
 	s.unused(ctx, c, id, name)
-	return s.insertTask("operations", key, newTask(cid, node, name, "registry_deploy", id, a))
+	return s.insertTask(ctx, "operations", key, newTask(cid, node, name, "registry_deploy", id, a))
 }
-func seedPayloads(name, username, ssh, id string, packages []any) map[string][]byte {
+func seedPayloads(name, username, ssh, id string, packages []any, containers ...any) map[string][]byte {
 	data := doc{"hostname": name, "manage_etc_hosts": true, "users": []any{doc{"name": username, "groups": []string{"sudo"}, "sudo": "ALL=(ALL) NOPASSWD:ALL", "shell": "/bin/bash", "lock_passwd": true, "ssh_authorized_keys": strings.Split(ssh, "\n")}}, "ssh_pwauth": false, "disable_root": true, "package_update": len(packages) > 0, "packages": packages, "growpart": doc{"mode": "auto", "devices": []string{"/"}}, "resize_rootfs": true}
 	commands := []any{}
-	services := map[string]string{"docker.io": "docker", "nginx": "nginx", "postgresql": "postgresql", "redis-server": "redis-server"}
+	services := map[string]string{"docker.io": "docker", "nginx": "nginx", "postgresql": "postgresql", "redis-server": "redis-server", "mariadb-server": "mariadb", "apache2": "apache2", "haproxy": "haproxy", "prometheus": "prometheus", "prometheus-node-exporter": "prometheus-node-exporter", "mosquitto": "mosquitto", "samba": "smbd", "nfs-kernel-server": "nfs-server", "memcached": "memcached", "rabbitmq-server": "rabbitmq-server", "zabbix-agent": "zabbix-agent", "bind9": "named", "squid": "squid", "fail2ban": "fail2ban", "chrony": "chrony"}
 	for _, p := range packages {
 		if svc := services[str(p)]; svc != "" {
 			commands = append(commands, []string{"systemctl", "enable", "--now", svc})
 		}
 	}
+	commands = append(commands, containerCommands(containers)...)
 	data["runcmd"] = commands
 	return map[string][]byte{"user-data": append([]byte("#cloud-config\n"), must(json.Marshal(data))...), "meta-data": must(json.Marshal(doc{"instance-id": id, "local-hostname": name})), "network-config": must(json.Marshal(doc{"version": 2, "ethernets": doc{"ethernet": doc{"match": doc{"name": "e*"}, "dhcp4": true}}}))}
 }
-func seedISO(ctx context.Context, path, name, username, ssh, id string, packages []any) {
+func seedISO(ctx context.Context, path, name, username, ssh, id string, packages []any, containers ...any) {
 	dir := must(os.MkdirTemp(filepath.Dir(path), "seed-data-"))
 	defer os.RemoveAll(dir)
-	for name, raw := range seedPayloads(name, username, ssh, id, packages) {
+	for name, raw := range seedPayloads(name, username, ssh, id, packages, containers...) {
 		if e := os.WriteFile(filepath.Join(dir, name), raw, 0600); e != nil {
 			panic(e)
 		}
@@ -143,6 +215,45 @@ func seedISO(ctx context.Context, path, name, username, ssh, id string, packages
 		fail("NoCloud-ISO konnte nicht erstellt werden. xorriso im Image prüfen.")
 	}
 }
+
+// uploadReason extracts Proxmox's short error text from a rejected upload
+// without echoing arbitrary amounts of response data.
+func uploadReason(resp *http.Response) string {
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	reason := strings.TrimSpace(resp.Status)
+	var envelope doc
+	if json.Unmarshal(raw, &envelope) == nil {
+		if m := strings.TrimSpace(str(envelope["message"])); m != "" {
+			reason = m
+		}
+		if errs, ok := envelope["errors"].(map[string]any); ok {
+			for k, v := range errs {
+				reason += " " + k + ": " + strings.TrimSpace(str(v))
+			}
+		}
+	} else if text := strings.TrimSpace(string(raw)); text != "" && len(text) < 300 {
+		reason = text
+	}
+	reason = strings.Join(strings.Fields(reason), " ")
+	if len(reason) > 240 {
+		reason = reason[:240] + "…"
+	}
+	if reason == "" {
+		return ""
+	}
+	return ": " + reason
+}
+
+// removeImportImage deletes the temporary cloud image from the import
+// storage. The VM disk is a copy (import-from), so the file is no longer
+// needed once the VM exists, and it is useless after a definite failure.
+func (s *Server) removeImportImage(ctx context.Context, c Connection, node string, a doc, imageName string) bool {
+	volid := str(a["import_storage"]) + ":import/" + imageName
+	path := "/nodes/" + url.PathEscape(node) + "/storage/" + url.PathEscape(str(a["import_storage"])) + "/content/" + url.PathEscape(volid)
+	_, err := s.PVE.Call(ctx, c, "DELETE", path, nil)
+	return err == nil
+}
+
 func (s *Server) upload(ctx context.Context, c Connection, node, store, path, name, content string) any {
 	if !assetNameRE.MatchString(name) || !contains("iso,import", content) {
 		fail("Ungültiger Upload.")
@@ -155,8 +266,10 @@ func (s *Server) upload(ctx context.Context, c Connection, node, store, path, na
 	must(f.Seek(0, io.SeekStart))
 	prefix := &bytes.Buffer{}
 	writer := multipart.NewWriter(prefix)
-	for k, v := range map[string]string{"content": content, "checksum": hex.EncodeToString(h.Sum(nil)), "checksum-algorithm": "sha256"} {
-		if e := writer.WriteField(k, v); e != nil {
+	// pveproxy reads the form fields strictly in this order before the file
+	// part (PVE::APIServer::AnyEvent::file_upload_multipart).
+	for _, kv := range [][2]string{{"content", content}, {"checksum-algorithm", "sha256"}, {"checksum", hex.EncodeToString(h.Sum(nil))}} {
+		if e := writer.WriteField(kv[0], kv[1]); e != nil {
 			panic(e)
 		}
 	}
@@ -178,7 +291,7 @@ func (s *Server) upload(ctx context.Context, c Connection, node, store, path, na
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		panic(&Problem{"Proxmox-Upload abgelehnt. Storage und Datastore.AllocateTemplate prüfen.", 502, resp.StatusCode >= 500})
+		panic(&Problem{"Proxmox-Upload abgelehnt (HTTP " + strconv.Itoa(resp.StatusCode) + uploadReason(resp) + "). Storage, Inhaltstyp und Datastore.AllocateTemplate prüfen.", 502, resp.StatusCode >= 500})
 	}
 	var envelope doc
 	if e := json.NewDecoder(io.LimitReader(resp.Body, 1024*1024)).Decode(&envelope); e != nil {
@@ -195,20 +308,18 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 	err := guarded(func() {
 		a := configOf(op["args"])
 		c := s.conn(str(op["connection_id"]))
-		endpoint := str(a["endpoint"])
-		valid := false
-		for _, v := range must(ValidateEndpoints(c.URL, c.Endpoints)) {
-			if v == endpoint {
-				valid = true
-			}
-		}
-		if !valid {
-			fail("Ziel-Endpunkt wurde entfernt.")
-		}
-		pin := c
-		pin.URL = endpoint
-		pin.Endpoints = nil
 		node := str(op["node"])
+		// Only the upload stages need a node-local endpoint. It is verified
+		// (configured or discovered) when first needed, so resuming a stage
+		// that just polls a task through the cluster does not depend on it.
+		var pinned *Connection
+		nodePin := func() Connection {
+			if pinned == nil {
+				p := s.nodeConnection(ctx, c, node)
+				pinned = &p
+			}
+			return *pinned
+		}
 		base := "/nodes/" + url.PathEscape(node)
 		vm := baseVM(node, "qemu", int(num(op["vmid"])))
 		imageName := "orbit-img-" + str(op["id"]) + ".qcow2"
@@ -234,12 +345,12 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 			begin("image")
 			var result any
 			if a["mode"] == "web" {
-				result = s.call(ctx, pin, "POST", base+"/storage/"+url.PathEscape(str(a["import_storage"]))+"/download-url", doc{"content": "import", "url": image["url"], "filename": imageName, "checksum": image["sha256"], "checksum-algorithm": "sha256", "verify-certificates": 1})
+				result = s.call(ctx, nodePin(), "POST", base+"/storage/"+url.PathEscape(str(a["import_storage"]))+"/download-url", doc{"content": "import", "url": image["url"], "filename": imageName, "checksum": image["sha256"], "checksum-algorithm": "sha256", "verify-certificates": 1})
 			} else {
 				func() {
 					path, cleanup := s.Catalog.asset(ctx, image)
 					defer cleanup()
-					result = s.upload(ctx, pin, node, str(a["import_storage"]), path, imageName, "import")
+					result = s.upload(ctx, nodePin(), node, str(a["import_storage"]), path, imageName, "import")
 				}()
 			}
 			waiting("image", result)
@@ -257,9 +368,9 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 			defer os.RemoveAll(dir)
 			path := filepath.Join(dir, seedName)
 			pkgs, _ := a["packages"].([]any)
-			seedISO(ctx, path, str(op["name"]), str(a["username"]), str(a["ssh"]), str(op["id"]), pkgs)
+			seedISO(ctx, path, str(op["name"]), str(a["username"]), str(a["ssh"]), str(op["id"]), pkgs, anyList(a["containers"])...)
 			begin("seed")
-			waiting("seed", s.upload(ctx, pin, node, str(a["iso_storage"]), path, seedName, "iso"))
+			waiting("seed", s.upload(ctx, nodePin(), node, str(a["iso_storage"]), path, seedName, "iso"))
 		}
 		if op["stage"] == "seed_waiting" {
 			s.waitTask(ctx, c, node, str(op["upid"]))
@@ -273,13 +384,13 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 		}
 		if op["stage"] == "create_waiting" {
 			s.waitTask(ctx, c, node, str(op["upid"]))
+			if s.removeImportImage(ctx, c, node, a, imageName) {
+				s.persist("operations", op, "Temporäres Cloud-Image aus dem Import-Storage entfernt.")
+			}
 			advance("resize")
 		}
 		if op["stage"] == "resize" {
-			config := configOf(s.call(ctx, c, "GET", vm+"/config", nil))
-			if config["name"] != op["name"] {
-				fail("VM-Identität stimmt nicht mehr.")
-			}
+			config := s.guestConfig(ctx, c, vm, "name", str(op["name"]))
 			if num(a["disk"]) > diskGiB(config, "scsi0") {
 				begin("resize")
 				result := s.call(ctx, c, "PUT", vm+"/resize", doc{"disk": "scsi0", "size": str(a["disk"]) + "G"})
@@ -298,10 +409,9 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 		}
 		if op["stage"] == "start" {
 			if a["start"] == true {
-				vm := s.findVM(ctx, c, int(num(op["vmid"])), node)
-				if vm["name"] != op["name"] {
-					fail("VM-Identität stimmt nicht mehr.")
-				}
+				// /cluster/resources lags behind a freshly created VM; check
+				// the VM's own configuration instead.
+				s.guestConfig(ctx, c, vm, "name", str(op["name"]))
 				begin("start")
 				waiting("start", s.call(ctx, c, "POST", base+"/qemu/"+str(op["vmid"])+"/status/start", nil))
 			} else {
@@ -319,4 +429,43 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 		}
 	})
 	s.finishError(ctx, "operations", op, err)
+	// A definite failure before the VM exists leaves the downloaded image
+	// behind; remove it. Uncertain states (needs_attention) are left alone.
+	if err != nil && op["status"] == "failed" && contains("image_waiting,seed,seed_submitting,seed_waiting,create,create_submitting", str(op["stage"])) {
+		_ = guarded(func() {
+			a := configOf(op["args"])
+			c := s.conn(str(op["connection_id"]))
+			if s.removeImportImage(ctx, c, str(op["node"]), a, "orbit-img-"+str(op["id"])+".qcow2") {
+				s.persist("operations", op, "Temporäres Cloud-Image nach dem Fehler entfernt.")
+			}
+		})
+	}
+}
+
+// guestConfig reads a freshly created or cloned guest's configuration and
+// checks its name. Proxmox keeps a create/clone lock for a moment after the
+// task, so a missing name or an active lock is retried for up to 30 s.
+func (s *Server) guestConfig(ctx context.Context, c Connection, path, nameKey, want string) doc {
+	for attempt := 0; ; attempt++ {
+		cfg := asDoc(s.call(ctx, c, "GET", path+"/config", nil))
+		got := str(cfg[nameKey])
+		if got == want && str(cfg["lock"]) == "" {
+			return cfg
+		}
+		if attempt < 20 && (got == "" || str(cfg["lock"]) != "") {
+			select {
+			case <-ctx.Done():
+				panic(ctx.Err())
+			case <-time.After(1500 * time.Millisecond):
+			}
+			continue
+		}
+		if got == want {
+			return cfg
+		}
+		if got == "" {
+			fail("Die VM hat in Proxmox noch keinen Namen" + map[bool]string{true: " (Sperre: " + str(cfg["lock"]) + ")", false: ""}[str(cfg["lock"]) != ""] + ". Konfiguration in Proxmox prüfen.")
+		}
+		fail("VM-Identität stimmt nicht mehr: Proxmox meldet „" + got + "“ statt „" + want + "“.")
+	}
 }
