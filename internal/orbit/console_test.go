@@ -59,6 +59,15 @@ func testGuestConsole(t *testing.T, kind, mode string) {
 		}
 		var data any
 		if strings.HasSuffix(r.URL.Path, "/vncproxy") {
+			_ = r.ParseForm()
+			if kind == "lxc" {
+				if r.Form.Get("width") != "1000" || r.Form.Get("height") != "600" {
+					t.Error("wrong terminal viewport", r.Form)
+				}
+			} else if r.Form.Has("width") || r.Form.Has("height") {
+				t.Error("QEMU display resolution changed")
+			}
+
 			if !strings.Contains(r.URL.Path, "/"+kind+"/100/") {
 				t.Error("wrong creation endpoint", r.URL.Path)
 			}
@@ -93,7 +102,7 @@ func testGuestConsole(t *testing.T, kind, mode string) {
 	defer server.Close()
 	s.Origin = server.URL
 	cookie, csrf := setup(t, s, store)
-	w := request(s, "POST", "/api/consoles", `{"connection_id":"test","node":"node1","vmid":100}`, cookie, csrf, s.Origin)
+	w := request(s, "POST", "/api/consoles", `{"connection_id":"test","node":"node1","vmid":100,"width":1000,"height":600}`, cookie, csrf, s.Origin)
 	if w.Code != 201 {
 		t.Fatal(w.Body.String())
 	}

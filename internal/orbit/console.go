@@ -68,7 +68,16 @@ func (s *Server) createConsole(ctx context.Context, d doc, session *session) doc
 	if full {
 		panic(problem("Zu viele offene Konsolen.", 429))
 	}
-	result := configOf(s.call(ctx, c, "POST", baseVM(node, kind, id)+"/vncproxy", doc{"websocket": 1}))
+	proxyArgs := doc{"websocket": 1}
+	if kind == "lxc" {
+		if _, ok := d["width"]; ok {
+			proxyArgs["width"] = integer(d, "width", 16, 4096)
+		}
+		if _, ok := d["height"]; ok {
+			proxyArgs["height"] = integer(d, "height", 16, 2160)
+		}
+	}
+	result := configOf(s.call(ctx, c, "POST", baseVM(node, kind, id)+"/vncproxy", proxyArgs))
 	ticket, ok := result["ticket"].(string)
 	port := int(num(result["port"]))
 	if !ok || port < 1 || port > 65535 {

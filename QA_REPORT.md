@@ -180,3 +180,7 @@ Darstellungsmodus stammen aus dem Sitzungszustand und werden nicht bei jedem
 Messwert auf „wird vorbereitet“ zurückgesetzt. DOM-Tests prüfen „Verbunden“ nach
 Live-Updates, erhaltenes Canvas, Originalgröße und deaktiviertes CAD nach Trennung.
 `npm test` bestanden. Keine Aktionen auf echten Gästen durchgeführt.
+LXC-VNC-Terminal erhält beim Verbinden zusätzlich die gemessene Viewport-Breite
+und -Höhe (serverseitig auf Proxmox-Grenzen validiert). QEMU-Auflösung bleibt
+unverändert. TLS-/WebSocket-Tests prüfen die Weitergabe nur für LXC. Native
+Vollbildablehnung fällt auf eine fensterfüllende Großansicht mit Escape zurück.
