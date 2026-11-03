@@ -239,6 +239,14 @@ func (s *Server) userRoutes(w http.ResponseWriter, r *http.Request, d doc, curre
 				panic(problem("Benutzer nicht gefunden.", 401))
 			}
 			writeJSON(w, 200, doc{"id": u.ID, "username": u.Username, "role": current.Role, "totp": u.TOTP != "", "token": current.Token})
+		case path == "/api/users/sso" && method == "GET":
+			handled = true
+			writeJSON(w, 200, s.publicOIDC(s.oidcConfig()))
+		case path == "/api/users/sso" && method == "POST":
+			handled = true
+			cfg := s.saveOIDC(d)
+			_ = s.Store.AuditAs(current.Username, "sso.config.updated", cfg.Issuer)
+			writeJSON(w, 200, s.publicOIDC(cfg))
 		case path == "/api/users" && method == "GET":
 			handled = true
 			rows := must(s.Store.DB.Query("SELECT id,username,role,disabled,totp!='',created,(SELECT max(expires) FROM sessions WHERE user_id=users.id) FROM users ORDER BY username"))
@@ -273,7 +281,7 @@ func (s *Server) userRoutes(w http.ResponseWriter, r *http.Request, d doc, curre
 			}
 			_ = s.Store.AuditAs(current.Username, "user.created", name+" ("+role+")")
 			writeJSON(w, 201, doc{"id": id, "username": name, "role": role})
-		case strings.HasPrefix(path, "/api/users/") && method == "POST":
+		case strings.HasPrefix(path, "/api/users/") && path != "/api/users/sso" && method == "POST":
 			handled = true
 			parts := strings.Split(strings.TrimPrefix(path, "/api/users/"), "/")
 			s.mu.Lock()

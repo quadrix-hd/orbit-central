@@ -42,11 +42,12 @@ type Server struct {
 	metricsRunning map[string]chan struct{}
 	TrustedProxies []*net.IPNet
 	Alerting       *alertEngine
+	OIDC           *oidcState
 }
 
 func NewServer(s *Store, p *Proxmox, origin, static string) *Server {
 	proxies, _ := parseTrustedProxies(os.Getenv("ORBIT_TRUSTED_PROXIES"))
-	server := &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}, Console: newConsole(), ctx: context.Background(), TrustedProxies: proxies, Alerting: newAlertEngine()}
+	server := &Server{Store: s, PVE: p, Origin: strings.TrimRight(origin, "/"), Static: static, attempts: map[string][]time.Time{}, Console: newConsole(), ctx: context.Background(), TrustedProxies: proxies, Alerting: newAlertEngine(), OIDC: &oidcState{pending: map[string]oidcPending{}}}
 	server.Catalog = NewCatalog(s.Dir, server.catalogSource(), os.Getenv("ORBIT_CATALOG_MODE"))
 	return server
 }
@@ -269,11 +270,17 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 			csrf = session.CSRF
 		}
 		out := map[string]any{"configured": s.Store.Configured(), "authenticated": session != nil, "csrf": csrf, "version": Version, "runtime": "go"}
+		if sso := s.oidcConfig(); sso.Enabled {
+			out["sso"] = map[string]any{"label": sso.ButtonLabel}
+		}
 		if session != nil {
 			out["user"] = map[string]any{"username": session.Username, "role": session.Role}
 		}
 		writeJSON(w, 200, out)
 		return nil
+	}
+	if handled, err := s.oidcRoutes(w, r); handled || err != nil {
+		return err
 	}
 	if path == "/api/setup" && method == "POST" {
 		if err = s.limitLogin(r); err != nil {
