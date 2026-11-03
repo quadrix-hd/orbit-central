@@ -67,6 +67,7 @@ func defaultAlertConfig() alertConfig {
 }
 
 type alertEngine struct {
+	sending sync.WaitGroup
 	mu      sync.Mutex
 	pending map[string]time.Time
 	cursor  map[string]float64
@@ -259,7 +260,7 @@ func (s *Server) writeAlert(d doc) {
 }
 
 func (s *Server) listAlerts() []doc {
-	rows, err := s.Store.DB.Query("SELECT data FROM alerts ORDER BY updated DESC LIMIT 500")
+	rows, err := s.Store.DB.Query(`SELECT data FROM alerts WHERE data NOT LIKE '%"state":"resolved"%' UNION ALL SELECT data FROM (SELECT data FROM alerts WHERE data LIKE '%"state":"resolved"%' ORDER BY updated DESC LIMIT 500)`)
 	if err != nil {
 		panic(err)
 	}
@@ -325,22 +326,38 @@ func (s *Server) evaluateAlerts(ctx context.Context, at time.Time) {
 	if err != nil {
 		panic(err)
 	}
-	active := map[string]finding{}
-	evaluated := map[string]bool{}
+	sc := alertScan{active: map[string]finding{}, reachable: map[string]bool{}, keep: map[string]bool{}, exists: map[string]bool{}}
 	for _, c := range conns {
+		sc.exists[c.ID] = true
 		if c.Kind != "pve" {
 			continue
 		}
-		evaluated[c.ID] = true
-		for _, f := range s.connectionFindings(ctx, c, cfg, at) {
-			active[f.id] = f
+		findings, keep, reachable := s.connectionFindings(ctx, c, cfg, at)
+		sc.reachable[c.ID] = reachable
+		for _, f := range findings {
+			sc.active[f.id] = f
+		}
+		for _, id := range keep {
+			sc.keep[id] = true
 		}
 	}
-	s.applyFindings(cfg, active, evaluated, at)
+	s.applyFindings(cfg, sc, at)
 }
 
-func (s *Server) connectionFindings(ctx context.Context, c Connection, cfg alertConfig, at time.Time) []finding {
+// alertScan is the outcome of one evaluation. Alerts are only resolved when
+// their object was actually observed in a healthy state: unreachable
+// connections and objects whose state is unknown (keep) stay unchanged, and
+// alerts of removed connections are closed.
+type alertScan struct {
+	active    map[string]finding
+	reachable map[string]bool
+	keep      map[string]bool
+	exists    map[string]bool
+}
+
+func (s *Server) connectionFindings(ctx context.Context, c Connection, cfg alertConfig, at time.Time) ([]finding, []string, bool) {
 	out := []finding{}
+	keep := []string{}
 	reqCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	data, err := s.PVE.Call(reqCtx, c, "GET", "/cluster/resources", nil)
@@ -353,7 +370,7 @@ func (s *Server) connectionFindings(ctx context.Context, c Connection, cfg alert
 			}
 			out = append(out, finding{id: alertID("connection_error", c.ID), rule: "connection_error", severity: "critical", kind: "state", connection: c.ID, object: c.Name, title: "Cluster nicht erreichbar: " + c.Name, message: msg})
 		}
-		return out
+		return out, keep, false
 	}
 	hold := func(f finding, minutes int) {
 		s.Alerting.mu.Lock()
@@ -396,17 +413,24 @@ func (s *Server) connectionFindings(ctx context.Context, c Connection, cfg alert
 			}
 		case "storage":
 			rule := cfg.Rules["storage_usage"]
-			if !rule.Enabled || r["status"] != "available" || num(r["maxdisk"]) <= 0 {
+			if !rule.Enabled {
 				continue
 			}
 			name, node := str(r["storage"]), str(r["node"])
 			object := node + "/" + name
 			if truth(r["shared"]) {
+				object = name + " (shared)"
+			}
+			if r["status"] != "available" || num(r["maxdisk"]) <= 0 {
+				// Offline node or inactive storage: usage is unknown, not fine.
+				keep = append(keep, alertID("storage_usage", c.ID, object))
+				continue
+			}
+			if truth(r["shared"]) {
 				if seenShared[name] {
 					continue
 				}
 				seenShared[name] = true
-				object = name + " (shared)"
 			}
 			used := math.Round(num(r["disk"]) / num(r["maxdisk"]) * 100)
 			if used >= rule.Threshold {
@@ -417,7 +441,7 @@ func (s *Server) connectionFindings(ctx context.Context, c Connection, cfg alert
 	if rule := cfg.Rules["task_failed"]; rule.Enabled {
 		out = append(out, s.taskFindings(reqCtx, c, rule, at)...)
 	}
-	return out
+	return out, keep, true
 }
 
 func (s *Server) clearPending(id string) {
@@ -492,20 +516,30 @@ func (s *Server) taskFindings(ctx context.Context, c Connection, rule alertRule,
 	return out
 }
 
-func (s *Server) applyFindings(cfg alertConfig, active map[string]finding, evaluated map[string]bool, at time.Time) {
+func (s *Server) applyFindings(cfg alertConfig, sc alertScan, at time.Time) {
 	ts := float64(at.UnixMilli()) / 1000
 	notify := []doc{}
 	func() {
 		s.mu.Lock()
 		defer s.mu.Unlock()
-		notify = s.recordFindings(active, evaluated, ts)
+		notify = s.recordFindings(sc, ts)
 	}()
-	for _, a := range notify {
-		s.notifyAll(cfg, a)
+	if len(notify) == 0 {
+		return
 	}
+	// Deliver outside the evaluation: slow or unreachable channels must not
+	// delay the next check or the "Jetzt prüfen" request.
+	s.Alerting.sending.Add(1)
+	go func() {
+		defer s.Alerting.sending.Done()
+		for _, a := range notify {
+			s.notifyAll(cfg, a)
+		}
+	}()
 }
 
-func (s *Server) recordFindings(active map[string]finding, evaluated map[string]bool, ts float64) []doc {
+func (s *Server) recordFindings(sc alertScan, ts float64) []doc {
+	active := sc.active
 	notify := []doc{}
 	existing := s.listAlerts()
 	known := map[string]doc{}
@@ -527,15 +561,17 @@ func (s *Server) recordFindings(active map[string]finding, evaluated map[string]
 		if a["state"] != "firing" || a["kind"] == "event" {
 			continue
 		}
-		if _, still := active[id]; still || !evaluated[str(a["connection_id"])] {
+		if _, still := active[id]; still {
 			continue
 		}
-		// A connection outage hides node and storage state; keep those alerts
-		// as they are instead of reporting them resolved.
-		if a["rule"] != "connection_error" {
-			if _, down := active[alertID("connection_error", str(a["connection_id"]))]; down {
-				continue
-			}
+		cid := str(a["connection_id"])
+		if sc.exists[cid] && (!sc.reachable[cid] || sc.keep[id]) {
+			// Unreachable cluster or unknown object state: nothing was
+			// observed, so the alert is neither confirmed nor resolved.
+			continue
+		}
+		if !sc.exists[cid] {
+			a["message"] = str(a["message"]) + " (Verbindung entfernt)"
 		}
 		a["state"] = "resolved"
 		a["resolved_at"] = ts

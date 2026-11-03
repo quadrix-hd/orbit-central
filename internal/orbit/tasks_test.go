@@ -60,6 +60,10 @@ func TestTaskDetailValidatesAndReadsStatusAndLog(t *testing.T) {
 	if len(paths) != 2 || !strings.Contains(paths[1], "/log?") || !strings.Contains(paths[1], "start=5") {
 		t.Fatalf("paths %v", paths)
 	}
+	if _, err := s.taskDetail(req, c, "localhost", "UPID:localhost:00000A3F:0002A1B2:00000003:6745F0A1:garbage_collection:store1:root@pam:"); err != nil {
+		t.Fatalf("PBS UPID rejected: %v", err)
+	}
+	paths = paths[:2]
 	for _, bad := range [][2]string{{"node1", "UPID:../../etc"}, {"node/1", sampleUPID}, {"node1", "not-a-upid"}} {
 		if _, err := s.taskDetail(req, c, bad[0], bad[1]); err == nil {
 			t.Fatalf("accepted %v", bad)

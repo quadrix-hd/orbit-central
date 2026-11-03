@@ -153,6 +153,7 @@ func TestWebhookNotificationFormatsAndSecrets(t *testing.T) {
 	}
 	f.resources = []any{doc{"type": "node", "node": "pve-02", "status": "offline"}}
 	s.evaluateAlerts(context.Background(), time.Now())
+	s.Alerting.sending.Wait()
 	mu.Lock()
 	teams, plain := bodies["/teams"], bodies["/json"]
 	mu.Unlock()
@@ -205,5 +206,44 @@ func TestAlertRoutesRequireAuthAndCSRF(t *testing.T) {
 	}
 	if w := request(s, "POST", "/api/alerts/config", `{"rules":{}}`, cookie, csrf, s.Origin); w.Code != 200 {
 		t.Fatalf("config: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAlertsStayOpenWhenStateIsUnknown(t *testing.T) {
+	s, f := alertServer(t)
+	s.updateAlertConfig(doc{"rules": doc{"connection_error": doc{"enabled": false}}})
+	at := time.Now()
+	f.resources = []any{
+		doc{"type": "node", "node": "pve-02", "status": "offline"},
+		doc{"type": "storage", "node": "pve-01", "storage": "local", "status": "available", "disk": 95.0, "maxdisk": 100.0},
+	}
+	s.evaluateAlerts(context.Background(), at)
+	// Outage with the connection rule disabled: nothing may be resolved.
+	f.down = true
+	s.evaluateAlerts(context.Background(), at.Add(time.Minute))
+	got := alertsByRule(s)
+	if got["node_offline|pve-02"]["state"] != "firing" || got["storage_usage|pve-01/local"]["state"] != "firing" {
+		t.Fatalf("unreachable cluster must not resolve alerts: %v", got)
+	}
+	// Storage of an offline node: usage unknown, alert stays.
+	f.down = false
+	f.resources = []any{doc{"type": "node", "node": "pve-02", "status": "offline"}, doc{"type": "storage", "node": "pve-01", "storage": "local", "status": "unknown"}}
+	s.evaluateAlerts(context.Background(), at.Add(2*time.Minute))
+	if alertsByRule(s)["storage_usage|pve-01/local"]["state"] != "firing" {
+		t.Fatal("unknown storage state must not resolve the alert")
+	}
+}
+
+func TestAlertsOfRemovedConnectionResolve(t *testing.T) {
+	s, f := alertServer(t)
+	f.resources = []any{doc{"type": "node", "node": "pve-02", "status": "offline"}}
+	s.evaluateAlerts(context.Background(), time.Now())
+	if _, err := s.Store.DB.Exec("DELETE FROM connections"); err != nil {
+		t.Fatal(err)
+	}
+	s.evaluateAlerts(context.Background(), time.Now().Add(time.Minute))
+	a := alertsByRule(s)["node_offline|pve-02"]
+	if a["state"] != "resolved" || !strings.Contains(str(a["message"]), "Verbindung entfernt") {
+		t.Fatalf("alert of removed connection must close: %v", a)
 	}
 }

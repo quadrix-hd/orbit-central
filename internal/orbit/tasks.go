@@ -12,7 +12,9 @@ import (
 // status and log of a single task, so administrators can follow what Proxmox
 // is doing without opening the Proxmox web interface.
 
-var upidPattern = regexp.MustCompile(`^UPID:[A-Za-z0-9_.-]{1,64}:[0-9A-Fa-f]{8}:[0-9A-Fa-f]{8}:[0-9A-Fa-f]{8}:[A-Za-z0-9_-]{1,40}:[^:/\s]{0,64}:[^:/\s]{1,128}:$`)
+// PVE: UPID:node:pid:pstart:starttime:type:id:user:
+// PBS: UPID:node:pid:pstart:taskid:starttime:type:id:user:
+var upidPattern = regexp.MustCompile(`^UPID:[A-Za-z0-9_.-]{1,64}:[0-9A-Fa-f]{8}:[0-9A-Fa-f]{8}:(?:[0-9A-Fa-f]{8}:)?[0-9A-Fa-f]{8}:[A-Za-z0-9_-]{1,40}:[^:/\s]{0,128}:[^:/\s]{1,128}:$`)
 var taskNodePattern = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,64}$`)
 
 func (s *Server) taskList(r *http.Request, c Connection) (any, error) {

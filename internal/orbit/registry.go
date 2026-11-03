@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -50,7 +51,7 @@ func (s *Server) nodeConnection(ctx context.Context, c Connection, node string) 
 	}
 	tried := []string{}
 	for _, endpoint := range s.discoverNodeEndpoints(ctx, c, node) {
-		if contains(strings.Join(configured, ","), endpoint) {
+		if slices.Contains(configured, endpoint) {
 			continue
 		}
 		tried = append(tried, endpoint)
@@ -83,7 +84,7 @@ func (s *Server) discoverNodeEndpoints(ctx context.Context, c Connection, node s
 	out := []string{}
 	add := func(host string) {
 		endpoint := "https://" + net.JoinHostPort(host, port)
-		if _, e := ValidateEndpoints(endpoint, nil); e == nil && !contains(strings.Join(out, ","), endpoint) {
+		if _, e := ValidateEndpoints(endpoint, nil); e == nil && !slices.Contains(out, endpoint) {
 			out = append(out, endpoint)
 		}
 	}
@@ -263,9 +264,17 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 		a := configOf(op["args"])
 		c := s.conn(str(op["connection_id"]))
 		node := str(op["node"])
-		// Re-verify on every run: the endpoint must still terminate on the
-		// target node (configured or discovered from the cluster).
-		pin := s.nodeConnection(ctx, c, node)
+		// Only the upload stages need a node-local endpoint. It is verified
+		// (configured or discovered) when first needed, so resuming a stage
+		// that just polls a task through the cluster does not depend on it.
+		var pinned *Connection
+		nodePin := func() Connection {
+			if pinned == nil {
+				p := s.nodeConnection(ctx, c, node)
+				pinned = &p
+			}
+			return *pinned
+		}
 		base := "/nodes/" + url.PathEscape(node)
 		vm := baseVM(node, "qemu", int(num(op["vmid"])))
 		imageName := "orbit-img-" + str(op["id"]) + ".qcow2"
@@ -291,12 +300,12 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 			begin("image")
 			var result any
 			if a["mode"] == "web" {
-				result = s.call(ctx, pin, "POST", base+"/storage/"+url.PathEscape(str(a["import_storage"]))+"/download-url", doc{"content": "import", "url": image["url"], "filename": imageName, "checksum": image["sha256"], "checksum-algorithm": "sha256", "verify-certificates": 1})
+				result = s.call(ctx, nodePin(), "POST", base+"/storage/"+url.PathEscape(str(a["import_storage"]))+"/download-url", doc{"content": "import", "url": image["url"], "filename": imageName, "checksum": image["sha256"], "checksum-algorithm": "sha256", "verify-certificates": 1})
 			} else {
 				func() {
 					path, cleanup := s.Catalog.asset(ctx, image)
 					defer cleanup()
-					result = s.upload(ctx, pin, node, str(a["import_storage"]), path, imageName, "import")
+					result = s.upload(ctx, nodePin(), node, str(a["import_storage"]), path, imageName, "import")
 				}()
 			}
 			waiting("image", result)
@@ -316,7 +325,7 @@ func (s *Server) processRegistry(ctx context.Context, op doc) {
 			pkgs, _ := a["packages"].([]any)
 			seedISO(ctx, path, str(op["name"]), str(a["username"]), str(a["ssh"]), str(op["id"]), pkgs)
 			begin("seed")
-			waiting("seed", s.upload(ctx, pin, node, str(a["iso_storage"]), path, seedName, "iso"))
+			waiting("seed", s.upload(ctx, nodePin(), node, str(a["iso_storage"]), path, seedName, "iso"))
 		}
 		if op["stage"] == "seed_waiting" {
 			s.waitTask(ctx, c, node, str(op["upid"]))
