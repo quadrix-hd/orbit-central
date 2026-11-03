@@ -51,7 +51,9 @@ function bindOperations(){
  const rules=$('#alert-rules-form');if(rules)rules.onsubmit=async e=>{e.preventDefault();const f=rules.elements,body={};for(const k of Object.keys(alertRuleMeta)){body[k]={enabled:f[k+'.enabled'].checked};if(f[k+'.threshold'])body[k].threshold=+f[k+'.threshold'].value;if(f[k+'.minutes'])body[k].minutes=+f[k+'.minutes'].value;if(f[k+'.backup_only'])body[k].backup_only=f[k+'.backup_only'].checked}const btn=rules.querySelector('button.primary');btn.disabled=true;try{await saveAlertConfig({rules:body});toast('Regeln gespeichert.');render()}catch(err){const el=rules.querySelector('[data-form-error]');if(el)el.textContent=err.message}finally{btn.disabled=false}};
  const drs=$('#drs-form');if(drs)drs.onchange=()=>{const d=Object.fromEntries(new FormData(drs));state.drs={mode:d.mode,threshold:+d.threshold,max:+d.max};try{localStorage.setItem('orbit-drs',JSON.stringify(state.drs))}catch{}render()};
  $$('[data-drs-migrate]').forEach(b=>b.onclick=()=>{const[cid,id,target]=b.dataset.drsMigrate.split(':'),vm=state.resources.find(v=>v.connection_id===cid&&String(v.vmid)===id);if(vm)vmAction(vm,'migrate',{target})});
+ $$('[data-cluster-open]').forEach(b=>b.onclick=()=>{state.scope=b.dataset.clusterOpen;nav('clusters')});
  if(state.page==='alerts'&&!alertState().at)loadAlerts();
 }
 try{const saved=JSON.parse(localStorage.getItem('orbit-drs')||'null');if(saved)state.drs=saved}catch{}
 setInterval(()=>{if(state.authenticated&&!document.hidden)loadAlerts()},30000);
+if(typeof document.addEventListener==='function')document.addEventListener('click',e=>{if(typeof innerWidth==='number'&&innerWidth<=900&&state.navCollapsed&&(e.target.closest?.('.prism-sidebar [data-nav]')||e.target.classList?.contains('prism-layout'))){state.navCollapsed=false;if(e.target.classList?.contains('prism-layout'))render()}},true);

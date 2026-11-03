@@ -31,7 +31,7 @@ func ExportPreview() error {
 		if e := os.MkdirAll(out, 0755); e != nil {
 			panic(e)
 		}
-		for _, name := range append(append([]string{"index.html"}, frontendAssets...), "orbit-sans-regular.woff", "orbit-sans-bold.woff") {
+		for _, name := range append(append([]string{"index.html"}, frontendAssets...), "orbit-sans-regular.woff", "orbit-sans-bold.woff", "inter-var.woff2") {
 			raw := must(os.ReadFile(filepath.Join("dist", name)))
 			if name == "index.html" {
 				text := string(raw)
@@ -44,7 +44,7 @@ func ExportPreview() error {
 				raw = []byte(text)
 			}
 			if name == "app.css" {
-				raw = []byte(strings.ReplaceAll(string(raw), `url("/orbit-sans-`, `url("./orbit-sans-`))
+				raw = []byte(strings.ReplaceAll(strings.ReplaceAll(string(raw), `url("/orbit-sans-`, `url("./orbit-sans-`), `url("/inter-var`, `url("./inter-var`))
 			}
 			if e := os.WriteFile(filepath.Join(out, name), raw, 0644); e != nil {
 				panic(e)

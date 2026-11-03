@@ -567,7 +567,7 @@ func (s *Server) static(w http.ResponseWriter, r *http.Request) error {
 	if name == "" {
 		name = "index.html"
 	}
-	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "management.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "operations.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff"}
+	allowed := map[string]string{"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "management.js": "text/javascript; charset=utf-8", "live.js": "text/javascript; charset=utf-8", "operations.js": "text/javascript; charset=utf-8", "infrastructure.js": "text/javascript; charset=utf-8", "vm-workspace.js": "text/javascript; charset=utf-8", "bootstrap.js": "text/javascript; charset=utf-8", "app.css": "text/css; charset=utf-8", "orbit-sans-regular.woff": "font/woff", "orbit-sans-bold.woff": "font/woff", "inter-var.woff2": "font/woff2"}
 	mime, ok := allowed[name]
 	if !ok {
 		return problem("Nicht gefunden.", 404)
