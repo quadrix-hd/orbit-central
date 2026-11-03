@@ -30,7 +30,11 @@ async function waitFor(url, tries = 60) {
   throw new Error('timeout waiting for ' + url);
 }
 let currentPage = null;
+const stepLog = [];
 async function step(name, fn) {
+  const started = Date.now(); try { return await runStep(name, fn) } finally { stepLog.push({ name, start: started, end: Date.now(), ok: !failures.some(f => f.startsWith(name + ':')) }); fs.writeFileSync(path.join(work, 'steps.json'), JSON.stringify(stepLog)) }
+}
+async function runStep(name, fn) {
   if (process.env.E2E_ONLY && failures.length) { console.log('  -', name, '(übersprungen)'); return }
   try { await fn(); passes.push(name); console.log('  ✓', name) }
   catch (e) {
@@ -52,7 +56,7 @@ function totp(secret, at = Date.now()) {
   certs();
   const bin = path.join(work, 'orbit');
   execFileSync('go', ['build', '-o', bin, './cmd/orbit'], { cwd: root, stdio: 'inherit' });
-  start('node', [path.join(__dirname, 'mock-pve.cjs'), work, String(PVE_PORT)], {}, 'mock');
+  start('node', [path.join(__dirname, 'mock-pve.cjs'), work, String(PVE_PORT)], { MOCK_RECORD: path.join(work, 'api.jsonl') }, 'mock');
   const data = path.join(work, 'data');
   start(bin, [], { ORBIT_DATA_DIR: data, PORT: String(ORBIT_PORT), ORBIT_STATIC_DIR: path.join(root, 'dist'), ORBIT_PUBLIC_ORIGIN: ORIGIN, ORBIT_CA_FILE: path.join(work, 'ca.crt'), ORBIT_CATALOG_URL: '', ORBIT_NOVNC_ROOT: path.join(work, 'novnc') }, 'orbit');
   await waitFor(ORIGIN + '/api/health');
@@ -394,5 +398,6 @@ function totp(secret, at = Date.now()) {
   const unknown = fs.readFileSync(path.join(work, 'mock.log'), 'utf8').split('\n').filter(l => l.startsWith('UNKNOWN'));
   console.log(`\n${passes.length} bestanden, ${failures.length} fehlgeschlagen`);
   if (unknown.length) console.log('Vom Mock nicht unterstützte Aufrufe:\n  ' + unknown.join('\n  '));
+  try { console.log('API-Prüfbericht: ' + require('./report.cjs')(work, process.env.E2E_REPORT || undefined)) } catch (e) { console.log('Bericht nicht erstellt: ' + e.message) }
   if (failures.length) { console.log('Fehler:\n  ' + failures.join('\n  ') + '\nLogs: ' + work); process.exit(1) }
 })().catch(e => { console.error(e); for (const p of procs) p.kill(); process.exit(1) });
