@@ -49,7 +49,9 @@ func TestRegistryDeploymentWebAndCacheWorkflow(t *testing.T) {
 			d := doc{"request_key": randomID(), "connection_id": "test", "node": "node1", "action": "registry_deploy", "package_id": "example", "package_version": "1", "acknowledge": true, "vmid": 101, "name": "registry-vm", "username": "orbit", "ssh": "ssh-ed25519 AAAATEST", "start": false, "storage": "local", "import_storage": "local", "iso_storage": "local", "bridge": "vmbr0", "cpu": 2, "ram": 4, "disk": 16}
 			op := submit(t, s, d)
 			s.processOperation(context.Background(), op)
-			if op["status"] != "completed" || len(f.writes) != 3 {
+			// download/upload image, upload seed, create VM, remove the
+			// temporary import image
+			if op["status"] != "completed" || len(f.writes) != 4 || !strings.HasPrefix(f.writes[3], "DELETE ") || !strings.Contains(f.writes[3], "orbit-img-") {
 				t.Fatalf("status %v events %v writes=%d", op["status"], op["events"], len(f.writes))
 			}
 			joined := strings.Join(f.writes, "\n")
