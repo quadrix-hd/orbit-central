@@ -106,6 +106,8 @@ func OpenStore(dir string) (*Store, error) {
  CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,request_key TEXT UNIQUE NOT NULL,data TEXT NOT NULL,created REAL NOT NULL);
  CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at REAL NOT NULL,action TEXT NOT NULL,details TEXT NOT NULL);
  CREATE TABLE IF NOT EXISTS alerts(id TEXT PRIMARY KEY,data TEXT NOT NULL,updated REAL NOT NULL);
+ CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT UNIQUE NOT NULL,password TEXT NOT NULL,role TEXT NOT NULL,disabled INTEGER NOT NULL DEFAULT 0,totp TEXT NOT NULL DEFAULT '',created REAL NOT NULL);
+ CREATE TABLE IF NOT EXISTS api_tokens(id TEXT PRIMARY KEY,user_id TEXT NOT NULL,name TEXT NOT NULL,hash TEXT UNIQUE NOT NULL,scope TEXT NOT NULL,created REAL NOT NULL,expires REAL NOT NULL,last_used REAL NOT NULL);
  INSERT OR IGNORE INTO settings VALUES('schema','1');`)
 	if err != nil {
 		return nil, err
@@ -143,6 +145,20 @@ func OpenStore(dir string) (*Store, error) {
 				return nil, err
 			}
 		}
+	}
+	for _, table := range []struct{ table, column, ddl string }{{"sessions", "user_id", "ALTER TABLE sessions ADD COLUMN user_id TEXT NOT NULL DEFAULT ''"}, {"audit", "user", "ALTER TABLE audit ADD COLUMN user TEXT NOT NULL DEFAULT ''"}} {
+		var present int
+		if err = db.QueryRow("SELECT count(*) FROM pragma_table_info(?) WHERE name=?", table.table, table.column).Scan(&present); err != nil {
+			return nil, err
+		}
+		if present == 0 {
+			if _, err = db.Exec(table.ddl); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if err = s.migrateUsers(); err != nil {
+		return nil, err
 	}
 	rows, err = db.Query("SELECT token FROM connections")
 	if err != nil {
@@ -187,8 +203,16 @@ func OpenStore(dir string) (*Store, error) {
 	return s, nil
 }
 
+// Configured reports whether an administrator exists and no access reset is
+// pending (reset-access re-opens the one-time setup for the admin account).
 func (s *Store) Configured() bool {
 	var n int
+	if s.DB.QueryRow("SELECT 1 FROM settings WHERE key='reset_pending'").Scan(&n) == nil {
+		return false
+	}
+	if s.DB.QueryRow("SELECT 1 FROM users WHERE role='admin' AND disabled=0 LIMIT 1").Scan(&n) == nil {
+		return true
+	}
 	return s.DB.QueryRow("SELECT 1 FROM settings WHERE key='password'").Scan(&n) == nil
 }
 func (s *Store) Audit(action, details string) error {

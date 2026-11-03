@@ -115,7 +115,7 @@ func (s *Server) submitJob(ctx context.Context, d doc) (doc, int) {
 	j["disk"] = disk
 	j["ssh"] = ssh
 	j["start"] = start
-	return s.insertTask("jobs", key, j)
+	return s.insertTask(ctx, "jobs", key, j)
 }
 func (s *Server) processJob(ctx context.Context, j doc) {
 	stage := str(j["stage"])

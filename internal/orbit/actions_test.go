@@ -164,7 +164,7 @@ func TestIdempotentRequestsAndCrossQueueReservation(t *testing.T) {
 		t.Fatal("missing snapshot input accepted")
 	}
 	j := newTask("test", "node1", "another", "clone", 100, nil)
-	if err = guarded(func() { s.insertTask("jobs", randomID(), j) }); err == nil {
+	if err = guarded(func() { s.insertTask(context.Background(), "jobs", randomID(), j) }); err == nil {
 		t.Fatal("cross-queue conflict accepted")
 	}
 }
@@ -222,7 +222,7 @@ func TestJobCrashMarkersNeverDispatch(t *testing.T) {
 		s, f := actionServer(t)
 		j := newTask("test", "node1", "vm-one", "clone", 100, nil)
 		j["stage"] = stage
-		_ = guarded(func() { s.insertTask("jobs", randomID(), j) })
+		_ = guarded(func() { s.insertTask(context.Background(), "jobs", randomID(), j) })
 		s.processJob(context.Background(), j)
 		if j["status"] != "needs_attention" || len(f.writes) != 0 {
 			t.Fatal(stage, j)

@@ -184,7 +184,7 @@ func (s *Server) submitRegistry(ctx context.Context, d doc, key string) (doc, in
 	a["endpoint"] = targets["endpoint"]
 	a["mode"] = s.Catalog.Mode()
 	s.unused(ctx, c, id, name)
-	return s.insertTask("operations", key, newTask(cid, node, name, "registry_deploy", id, a))
+	return s.insertTask(ctx, "operations", key, newTask(cid, node, name, "registry_deploy", id, a))
 }
 func seedPayloads(name, username, ssh, id string, packages []any) map[string][]byte {
 	data := doc{"hostname": name, "manage_etc_hosts": true, "users": []any{doc{"name": username, "groups": []string{"sudo"}, "sudo": "ALL=(ALL) NOPASSWD:ALL", "shell": "/bin/bash", "lock_passwd": true, "ssh_authorized_keys": strings.Split(ssh, "\n")}}, "ssh_pwauth": false, "disable_root": true, "package_update": len(packages) > 0, "packages": packages, "growpart": doc{"mode": "auto", "devices": []string{"/"}}, "resize_rootfs": true}

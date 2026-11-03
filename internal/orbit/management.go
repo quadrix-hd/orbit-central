@@ -205,7 +205,7 @@ func (s *Server) submitStorage(ctx context.Context, d doc, key string) (doc, int
 	op := newTask(cid, "", id, "storage_config", 0, args)
 	op["intent"] = intent
 	op["storage"] = id
-	return s.insertTask("operations", key, op)
+	return s.insertTask(ctx, "operations", key, op)
 }
 func (s *Server) processStorage(ctx context.Context, op doc) {
 	if op["stage"] == "submitting" {
@@ -609,7 +609,7 @@ func (s *Server) submitGuestEdit(ctx context.Context, d doc, key string) (doc, i
 	op := newTask(cid, node, str(vm["name"]), "guest_edit", id, args)
 	op["guest_type"] = vm["type"]
 	op["category"] = d["category"]
-	return s.insertTask("operations", key, op)
+	return s.insertTask(ctx, "operations", key, op)
 }
 func (s *Server) processGuestEdit(ctx context.Context, op doc) {
 	if op["stage"] == "submitting" {

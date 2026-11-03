@@ -39,6 +39,14 @@ async function step(name, fn) {
   }
 }
 const expect = (cond, msg) => { if (!cond) throw new Error(msg) };
+function totp(secret, at = Date.now()) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; let bits = '';
+  for (const c of secret.toUpperCase()) bits += alphabet.indexOf(c).toString(2).padStart(5, '0');
+  const key = Buffer.from(bits.match(/.{8}/g).map(b => parseInt(b, 2)));
+  const msg = Buffer.alloc(8); msg.writeBigUInt64BE(BigInt(Math.floor(at / 30000)));
+  const h = require('crypto').createHmac('sha1', key).update(msg).digest(), o = h[h.length - 1] & 15;
+  return String((h.readUInt32BE(o) & 0x7fffffff) % 1000000).padStart(6, '0');
+}
 
 (async () => {
   certs();
@@ -186,8 +194,60 @@ const expect = (cond, msg) => { if (!cond) throw new Error(msg) };
       if (errs.length) throw new Error(p + ': ' + errs[0]);
     }
   });
+  await step('Benutzer anlegen (Operator) über die Oberfläche', async () => {
+    await page.evaluate(() => { state.settingsTab = 'users'; nav('settings') });
+    await page.waitForSelector('[data-user-edit=""]', { timeout: 8000 });
+    await page.click('[data-user-edit=""]');
+    await page.fill('#f-username', 'olga'); await page.selectOption('#f-role', 'operator'); await page.fill('#f-password', 'operator-password-1');
+    await page.click('#user-form button.primary');
+    await page.waitForFunction(() => (accountState().users || []).some(u => u.username === 'olga'), null, { timeout: 8000 });
+  });
+  await step('API-Token erstellen und per Bearer nutzen', async () => {
+    await page.evaluate(() => { state.settingsTab = 'account'; nav('settings') });
+    await page.waitForSelector('[data-token-new]', { timeout: 8000 });
+    await page.click('[data-token-new]');
+    await page.fill('#f-name', 'e2e'); await page.selectOption('#f-scope', 'read');
+    await page.click('#token-form button.primary');
+    await page.waitForSelector('.token-once code', { timeout: 8000 });
+    const token = (await page.textContent('.token-once code')).trim();
+    const ok = await fetch(ORIGIN + '/api/connections', { headers: { Authorization: 'Bearer ' + token } });
+    const denied = await fetch(ORIGIN + '/api/operations', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{"action":"start"}' });
+    expect(ok.status === 200 && denied.status === 403, `read token: GET ${ok.status}, POST ${denied.status}`);
+  });
+  let totpSecret = '';
+  await step('2FA einrichten', async () => {
+    await page.click('[data-totp-setup]');
+    await page.waitForSelector('.totp-secret');
+    totpSecret = (await page.textContent('.totp-secret')).replace(/\s/g, '');
+    await page.fill('#totp-enable-form [name=code]', totp(totpSecret));
+    await page.click('#totp-enable-form button.primary');
+    await page.waitForFunction(() => accountState().me?.totp === true, null, { timeout: 8000 });
+  });
   await step('Abmelden', async () => {
     await page.evaluate(() => actions.logout()); await page.waitForSelector('input[name=password]', { timeout: 8000 });
+  });
+  await step('Anmeldung mit Passwort und 2FA-Code', async () => {
+    await page.fill('#f-username', 'admin'); await page.fill('#f-password', 'e2e-test-password-123');
+    await page.click('#auth-form button.primary');
+    await page.waitForSelector('#auth-code:not([hidden])', { timeout: 8000 });
+    await page.fill('#f-code', totp(totpSecret));
+    await page.click('#auth-form button.primary');
+    await page.waitForSelector('.prism-topbar', { timeout: 10000 });
+    await page.evaluate(() => actions.logout()); await page.waitForSelector('input[name=password]', { timeout: 8000 });
+  });
+  await step('Operator: Admin-Bereiche gesperrt, Gäste bedienbar', async () => {
+    await page.fill('#f-username', 'olga'); await page.fill('#f-password', 'operator-password-1');
+    await page.click('#auth-form button.primary');
+    await page.waitForSelector('.prism-topbar', { timeout: 10000 });
+    const role = await page.evaluate(() => state.user?.role);
+    expect(role === 'operator', 'role ' + role);
+    const users = await api('users'), conn = await api('connections', 'POST', { name: 'x' }), del = await api('operations', 'POST', { action: 'delete' });
+    expect(users.status === 403 && conn.status === 403 && del.status === 403, `users ${users.status}, connections ${conn.status}, delete ${del.status}`);
+    await page.evaluate(() => nav('settings'));
+    expect(!(await page.$('[data-settings-nav="users"]')), 'users nav visible for operator');
+    await actOnVM('mock-dc:102', 'shutdown');
+    const op = await waitOp(o => o.vmid === 102 && o.action === 'shutdown');
+    expect(op.status === 'completed' && op.requested_by === 'olga', 'status ' + op.status + ' by ' + op.requested_by);
   });
   await step('Keine JavaScript-Fehler', async () => expect(!jsErrors.length, jsErrors.slice(0, 3).join(' | ')));
 

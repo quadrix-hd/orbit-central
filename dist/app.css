@@ -627,3 +627,15 @@ details[open]>summary .chev{transform:rotate(-135deg) translate(-2px,-2px)}
 .prism-layout .prism-sidebar{z-index:40!important}
 @media(max-width:900px){.nav-pin{display:none!important}}
 /* ===== end Orbit UI v2 ===== */
+
+/* Accounts ---------------------------------------------------------------- */
+.role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:12px 0 16px}
+.role-card{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+.role-card b{display:block;margin-bottom:4px}
+.role-card small{color:var(--muted);font-size:12px;line-height:1.45}
+.totp-setup{margin-top:14px;padding:14px;border:1px dashed var(--line);border-radius:10px}
+.totp-secret{display:inline-block;margin:6px 0 10px;padding:8px 12px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);font:600 15px/1.4 ui-monospace,Menlo,Consolas,monospace;letter-spacing:1px;word-break:break-all}
+.inline-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.inline-form>div{min-width:180px}
+.token-once code{display:block;margin-top:6px;padding:8px 10px;border-radius:6px;background:var(--panel);font:12.5px ui-monospace,Menlo,Consolas,monospace;word-break:break-all;user-select:all}
+.bar-role{display:block;font-size:10px;font-weight:500;opacity:.75;margin-top:2px}

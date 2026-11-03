@@ -204,7 +204,10 @@ func reservationsOverlap(a, b doc) bool {
 	return false
 }
 
-func (s *Server) insertTask(table, key string, d doc) (doc, int) {
+func (s *Server) insertTask(ctx context.Context, table, key string, d doc) (doc, int) {
+	if who := requestUser(ctx); who != "" {
+		d["requested_by"] = who
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if old := s.requestDoc(table, key); old != nil {
@@ -428,7 +431,7 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 				a["boot"] = "order=ide2;scsi0"
 			}
 		}
-		return s.insertTask("operations", key, newTask(cid, node, name, action, id, a))
+		return s.insertTask(ctx, "operations", key, newTask(cid, node, name, action, id, a))
 	}
 	vm := s.findVM(ctx, c, id, node)
 	name := field(d, "confirm_name", 100, "")
@@ -534,7 +537,7 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 	}
 	op := newTask(cid, node, name, action, id, a)
 	op["guest_type"] = kind
-	return s.insertTask("operations", key, op)
+	return s.insertTask(ctx, "operations", key, op)
 }
 func defaultText(v, fallback string) string {
 	if v == "" {

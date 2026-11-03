@@ -85,9 +85,9 @@ func (s *Server) settingsRoutes(w http.ResponseWriter, r *http.Request, d doc, c
 			}
 			s.mu.Lock()
 			defer s.mu.Unlock()
-			var saved string
-			if e := s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='password'").Scan(&saved); e != nil {
-				panic(e)
+			u, saved, e := s.Store.userByID(current.UserID)
+			if e != nil || current.Token {
+				panic(problem("Nur in einer Anmeldesitzung möglich.", 403))
 			}
 			if !CheckPassword(old, saved) {
 				panic(problem("Aktuelles Passwort ist nicht korrekt.", 403))
@@ -95,10 +95,16 @@ func (s *Server) settingsRoutes(w http.ResponseWriter, r *http.Request, d doc, c
 			hash := must(PasswordHash(password, ""))
 			tx := must(s.Store.DB.Begin())
 			defer tx.Rollback()
-			if _, e := tx.Exec("UPDATE settings SET value=? WHERE key='password'", hash); e != nil {
+			if _, e := tx.Exec("UPDATE users SET password=? WHERE id=?", hash, u.ID); e != nil {
 				panic(e)
 			}
-			if _, e := tx.Exec("DELETE FROM sessions WHERE id!=?", current.ID); e != nil {
+			if u.Username == "admin" {
+				// Keeps a downgrade to a single-user version working.
+				if _, e := tx.Exec("UPDATE settings SET value=? WHERE key='password'", hash); e != nil {
+					panic(e)
+				}
+			}
+			if _, e := tx.Exec("DELETE FROM sessions WHERE id!=? AND user_id=?", current.ID, u.ID); e != nil {
 				panic(e)
 			}
 			if e := tx.Commit(); e != nil {
@@ -108,7 +114,7 @@ func (s *Server) settingsRoutes(w http.ResponseWriter, r *http.Request, d doc, c
 			writeJSON(w, 200, doc{"ok": true})
 		case path == "/api/account/sessions" && method == "GET":
 			handled = true
-			rows := must(s.Store.DB.Query("SELECT id,expires FROM sessions WHERE expires>? ORDER BY expires DESC", now()))
+			rows := must(s.Store.DB.Query("SELECT id,expires FROM sessions WHERE expires>? AND user_id=? ORDER BY expires DESC", now(), current.UserID))
 			defer rows.Close()
 			out := []any{}
 			for rows.Next() {
@@ -128,10 +134,10 @@ func (s *Server) settingsRoutes(w http.ResponseWriter, r *http.Request, d doc, c
 			if d["acknowledge"] != true {
 				fail("Abmelden anderer Sitzungen bestätigen.")
 			}
-			if _, e := s.Store.DB.Exec("DELETE FROM sessions WHERE id!=?", current.ID); e != nil {
+			if _, e := s.Store.DB.Exec("DELETE FROM sessions WHERE id!=? AND user_id=?", current.ID, current.UserID); e != nil {
 				panic(e)
 			}
-			_ = s.Store.Audit("account.sessions.revoked", "")
+			_ = s.Store.AuditAs(current.Username, "account.sessions.revoked", "")
 			writeJSON(w, 200, doc{"ok": true})
 		case path == "/api/catalog/source" && method == "POST":
 			handled = true

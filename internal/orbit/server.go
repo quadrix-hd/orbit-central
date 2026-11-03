@@ -60,31 +60,37 @@ func ValidateTrustedProxies(value string) error {
 	return nil
 }
 
-type session struct{ ID, CSRF string }
+type session struct {
+	ID, CSRF, UserID, Username, Role string
+	Token                            bool
+}
 
 func hashToken(token string) string {
 	b := sha256.Sum256([]byte(token))
 	return hex.EncodeToString(b[:])
 }
 func (s *Server) session(r *http.Request) (*session, error) {
+	if tok, err := s.tokenSession(r); tok != nil || err != nil {
+		return tok, err
+	}
 	cookie, err := r.Cookie("orbit_session")
 	if err != nil {
 		return nil, nil
 	}
-	var csrf string
-	id := hashToken(cookie.Value)
-	err = s.Store.DB.QueryRow("SELECT csrf FROM sessions WHERE id=? AND expires>?", id, float64(time.Now().UnixMilli())/1000).Scan(&csrf)
-	if errors.Is(err, sql.ErrNoRows) {
+	sess := &session{ID: hashToken(cookie.Value)}
+	var disabled int
+	err = s.Store.DB.QueryRow("SELECT s.csrf,u.id,u.username,u.role,u.disabled FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.id=? AND s.expires>?", sess.ID, float64(time.Now().UnixMilli())/1000).Scan(&sess.CSRF, &sess.UserID, &sess.Username, &sess.Role, &disabled)
+	if errors.Is(err, sql.ErrNoRows) || disabled == 1 {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	return &session{id, csrf}, nil
+	return sess, nil
 }
-func (s *Server) newSession(w http.ResponseWriter) (string, error) {
+func (s *Server) newSession(w http.ResponseWriter, userID string) (string, error) {
 	token, csrf := randomToken(32), randomToken(32)
-	_, err := s.Store.DB.Exec("INSERT INTO sessions VALUES(?,?,?)", hashToken(token), csrf, float64(time.Now().Unix()+12*3600))
+	_, err := s.Store.DB.Exec("INSERT INTO sessions(id,csrf,expires,user_id) VALUES(?,?,?,?)", hashToken(token), csrf, float64(time.Now().Unix()+12*3600), userID)
 	if err != nil {
 		return "", err
 	}
@@ -262,7 +268,11 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		if session != nil {
 			csrf = session.CSRF
 		}
-		writeJSON(w, 200, map[string]any{"configured": s.Store.Configured(), "authenticated": session != nil, "csrf": csrf, "version": Version, "runtime": "go"})
+		out := map[string]any{"configured": s.Store.Configured(), "authenticated": session != nil, "csrf": csrf, "version": Version, "runtime": "go"}
+		if session != nil {
+			out["user"] = map[string]any{"username": session.Username, "role": session.Role}
+		}
+		writeJSON(w, 200, out)
 		return nil
 	}
 	if path == "/api/setup" && method == "POST" {
@@ -288,13 +298,23 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return err
 		}
-		if _, err = s.Store.DB.Exec("INSERT INTO settings VALUES('password',?)", hashed); err != nil {
+		adminID := randomID()
+		if existing, _, e := s.Store.userByName("admin"); e == nil {
+			adminID = existing.ID
+			_, err = s.Store.DB.Exec("UPDATE users SET password=?,role='admin',disabled=0,totp='' WHERE id=?", hashed, adminID)
+		} else {
+			_, err = s.Store.DB.Exec("INSERT INTO users(id,username,password,role,disabled,totp,created) VALUES(?,?,?,?,0,'',?)", adminID, "admin", hashed, "admin", now())
+		}
+		if err != nil {
+			return err
+		}
+		if _, err = s.Store.DB.Exec("INSERT INTO settings(key,value) VALUES('password',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value; DELETE FROM settings WHERE key='reset_pending'", hashed); err != nil {
 			return err
 		}
 		if err = os.Remove(filepath.Join(s.Store.Dir, "setup-token")); err != nil {
 			log.Print("setup_token_cleanup_failed")
 		}
-		csrf, err := s.newSession(w)
+		csrf, err := s.newSession(w, adminID)
 		if err != nil {
 			return err
 		}
@@ -312,23 +332,38 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		if !ok || utf8.RuneCountInString(password) > 256 {
 			return problem("Anmeldung fehlgeschlagen.", 401)
 		}
-		var saved string
-		err = s.Store.DB.QueryRow("SELECT value FROM settings WHERE key='password'").Scan(&saved)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return err
+		username := strings.ToLower(strings.TrimSpace(str(data["username"])))
+		if username == "" {
+			username = "admin" // the login form of earlier versions had no username
+		}
+		u, saved, lookup := s.Store.userByName(username)
+		if lookup != nil && !errors.Is(lookup, sql.ErrNoRows) {
+			return lookup
 		}
 		if saved == "" {
 			saved, _ = PasswordHash("unconfigured", "00112233445566778899aabbccddeeff")
 		}
-		if !CheckPassword(password, saved) || !s.Store.Configured() {
-			_ = s.Store.Audit("auth.login_failed", "client="+s.clientIP(r))
+		if !CheckPassword(password, saved) || lookup != nil || u.Disabled || !s.Store.Configured() {
+			_ = s.Store.AuditAs(username, "auth.login_failed", "client="+s.clientIP(r))
 			return problem("Anmeldung fehlgeschlagen.", 401)
 		}
-		csrf, err := s.newSession(w)
+		if u.TOTP != "" {
+			code := str(data["code"])
+			if code == "" {
+				writeJSON(w, 401, map[string]any{"error": "Code aus der Authenticator-App eingeben.", "totp_required": true})
+				return nil
+			}
+			secret, e := s.Store.Decrypt(u.TOTP)
+			if e != nil || !verifyTOTP(secret, code, time.Now()) {
+				_ = s.Store.AuditAs(username, "auth.login_failed", "totp client="+s.clientIP(r))
+				return problem("Code ist nicht gültig.", 401)
+			}
+		}
+		csrf, err := s.newSession(w, u.ID)
 		if err != nil {
 			return err
 		}
-		if err = s.Store.Audit("auth.login", "client="+s.clientIP(r)); err != nil {
+		if err = s.Store.AuditAs(u.Username, "auth.login", "client="+s.clientIP(r)); err != nil {
 			return err
 		}
 		writeJSON(w, 200, map[string]any{"csrf": csrf})
@@ -348,8 +383,22 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 	if session == nil {
 		return problem("Bitte anmelden.", 401)
 	}
-	if mutating && !hmac.Equal([]byte(r.Header.Get("X-Orbit-CSRF")), []byte(session.CSRF)) {
+	if mutating && !session.Token && !hmac.Equal([]byte(r.Header.Get("X-Orbit-CSRF")), []byte(session.CSRF)) {
 		return problem("Sitzung ungültig. Bitte neu anmelden.", 403)
+	}
+	if err = authorize(session, method, path, data); err != nil {
+		return err
+	}
+	r = r.WithContext(withUser(r.Context(), session))
+	if mutating && path != "/api/logout" {
+		defer func() {
+			if sw, ok := w.(*statusWriter); ok && sw.status > 0 && sw.status < 400 {
+				_ = s.Store.AuditAs(session.Username, "api."+strings.ToLower(method), path)
+			}
+		}()
+	}
+	if handled, err := s.userRoutes(w, r, data, session); handled || err != nil {
+		return err
 	}
 	if path == "/api/logout" && method == "POST" {
 		if _, err = s.Store.DB.Exec("DELETE FROM sessions WHERE id=?", session.ID); err != nil {
@@ -375,7 +424,7 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if path == "/api/audit" && method == "GET" {
-		rows, err := s.Store.DB.Query("SELECT id,at,action,details FROM audit ORDER BY id DESC LIMIT 200")
+		rows, err := s.Store.DB.Query("SELECT id,at,action,details,user FROM audit ORDER BY id DESC LIMIT 500")
 		if err != nil {
 			return err
 		}
@@ -384,11 +433,11 @@ func (s *Server) route(w http.ResponseWriter, r *http.Request) error {
 		for rows.Next() {
 			var id int
 			var at float64
-			var action, details string
-			if err = rows.Scan(&id, &at, &action, &details); err != nil {
+			var action, details, who string
+			if err = rows.Scan(&id, &at, &action, &details, &who); err != nil {
 				return err
 			}
-			out = append(out, map[string]any{"id": id, "at": at, "action": action, "details": details})
+			out = append(out, map[string]any{"id": id, "at": at, "action": action, "details": details, "user": who})
 		}
 		if err = rows.Err(); err != nil {
 			return err

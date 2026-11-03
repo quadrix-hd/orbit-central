@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -80,7 +81,7 @@ func TestPasswordChangeAcceptsWhitespaceInCurrentPassword(t *testing.T) {
 	s, store := testServer(t)
 	cookie, csrf := setup(t, s, store)
 	hash := must(PasswordHash("  password-for-test  ", ""))
-	_, _ = store.DB.Exec("UPDATE settings SET value=? WHERE key='password'", hash)
+	_, _ = store.DB.Exec("UPDATE users SET password=? WHERE username='admin'", hash)
 	w := request(s, "POST", "/api/account/password", `{"current_password":"  password-for-test  ","new_password":"new-password-for-test"}`, cookie, csrf, s.Origin)
 	if w.Code != 200 {
 		t.Fatal(w.Body.String())
@@ -135,7 +136,7 @@ func TestConnectionDeletionDoesNotTouchProxmoxAndBlocksPendingWork(t *testing.T)
 		t.Fatal(w.Code)
 	}
 	op := newTask("test", "node1", "vm-one", "start", 100, doc{})
-	_ = guarded(func() { s.insertTask("operations", randomID(), op) })
+	_ = guarded(func() { s.insertTask(context.Background(), "operations", randomID(), op) })
 	w = request(s, "POST", "/api/connections/test/delete", `{"confirm_name":"Test"}`, cookie, csrf, s.Origin)
 	if w.Code != 409 {
 		t.Fatal(w.Body.String())

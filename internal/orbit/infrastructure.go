@@ -264,7 +264,7 @@ func (s *Server) submitInfra(ctx context.Context, d doc, key string) (doc, int) 
 	}
 	args := doc{"kind": kind, "intent": intent, "method": method, "path": path, "read_path": readPath, "fields": fields, "revision": expected, "scope": scope, "node": node, "vmid": d["vmid"], "guest_type": d["guest_type"], "async": async, "target": target}
 	op := newTask(cid, node, target, "infrastructure", 0, args)
-	return s.insertTask("operations", key, op)
+	return s.insertTask(ctx, "operations", key, op)
 }
 func scopeTarget(scope, node string, id int) string {
 	if scope == "cluster" {

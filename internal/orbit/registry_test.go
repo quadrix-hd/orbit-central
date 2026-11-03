@@ -73,7 +73,7 @@ func TestRegistryCrashMarkersNeverRepeat(t *testing.T) {
 		s, f := actionServer(t)
 		op := newTask("test", "node1", "registry-vm", "registry_deploy", 101, doc{})
 		op["stage"] = stage
-		_ = guarded(func() { s.insertTask("operations", randomID(), op) })
+		_ = guarded(func() { s.insertTask(context.Background(), "operations", randomID(), op) })
 		s.processOperation(context.Background(), op)
 		if op["status"] != "needs_attention" || len(f.writes) != 0 {
 			t.Fatal(stage, op)

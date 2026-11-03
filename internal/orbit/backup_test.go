@@ -12,7 +12,7 @@ import (
 func TestBackupRestorePreservesCredentialsAndClearsSessions(t *testing.T) {
 	store := testStore(t)
 	hash := must(PasswordHash("password-for-test", ""))
-	if _, e := store.DB.Exec("INSERT INTO settings VALUES('password',?); INSERT INTO sessions VALUES('sid','csrf',9999999999)", hash); e != nil {
+	if _, e := store.DB.Exec("INSERT INTO settings VALUES('password',?); INSERT INTO sessions(id,csrf,expires) VALUES('sid','csrf',9999999999)", hash); e != nil {
 		t.Fatal(e)
 	}
 	token := must(store.Encrypt("user@pve!id=secret"))
@@ -85,7 +85,7 @@ func TestOfflineLockAndResetAccess(t *testing.T) {
 		t.Fatal("second process lock accepted")
 	}
 	unlock()
-	if _, e = store.DB.Exec("INSERT INTO settings VALUES('password','old'); INSERT INTO sessions VALUES('x','y',9999999999)"); e != nil {
+	if _, e = store.DB.Exec("INSERT INTO settings VALUES('password','old'); INSERT INTO sessions(id,csrf,expires) VALUES('x','y',9999999999)"); e != nil {
 		t.Fatal(e)
 	}
 	if e = ResetAccess(store.Dir); e != nil {
