@@ -30,7 +30,11 @@ async function waitFor(url, tries = 60) {
   throw new Error('timeout waiting for ' + url);
 }
 let currentPage = null;
+const stepLog = [];
 async function step(name, fn) {
+  const started = Date.now(); try { return await runStep(name, fn) } finally { stepLog.push({ name, start: started, end: Date.now(), ok: !failures.some(f => f.startsWith(name + ':')) }); fs.writeFileSync(path.join(work, 'steps.json'), JSON.stringify(stepLog)) }
+}
+async function runStep(name, fn) {
   if (process.env.E2E_ONLY && failures.length) { console.log('  -', name, '(übersprungen)'); return }
   try { await fn(); passes.push(name); console.log('  ✓', name) }
   catch (e) {
@@ -52,7 +56,7 @@ function totp(secret, at = Date.now()) {
   certs();
   const bin = path.join(work, 'orbit');
   execFileSync('go', ['build', '-o', bin, './cmd/orbit'], { cwd: root, stdio: 'inherit' });
-  start('node', [path.join(__dirname, 'mock-pve.cjs'), work, String(PVE_PORT)], {}, 'mock');
+  start('node', [path.join(__dirname, 'mock-pve.cjs'), work, String(PVE_PORT)], { MOCK_RECORD: path.join(work, 'api.jsonl') }, 'mock');
   const data = path.join(work, 'data');
   start(bin, [], { ORBIT_DATA_DIR: data, PORT: String(ORBIT_PORT), ORBIT_STATIC_DIR: path.join(root, 'dist'), ORBIT_PUBLIC_ORIGIN: ORIGIN, ORBIT_CA_FILE: path.join(work, 'ca.crt'), ORBIT_CATALOG_URL: '', ORBIT_NOVNC_ROOT: path.join(work, 'novnc') }, 'orbit');
   await waitFor(ORIGIN + '/api/health');
@@ -387,6 +391,17 @@ function totp(secret, at = Date.now()) {
     const op = await waitOp(o => o.vmid === 102 && o.action === 'shutdown');
     expect(op.status === 'completed' && op.requested_by === 'olga', 'status ' + op.status + ' by ' + op.requested_by);
   });
+  await step('Oberfläche: UI 2 aktiv, Umschalter auf klassisch und zurück, Design-System-Seite', async () => {
+    expect(await page.evaluate(() => document.documentElement.dataset.ui) === '2', 'UI 2 not active');
+    await page.evaluate(() => nav('vms')); await page.waitForSelector('#page button.primary', { timeout: 5000 });
+    const h = await page.$eval('#page button.primary', e => getComputedStyle(e).backgroundColor);
+    expect(h === 'rgb(194, 65, 12)', 'primary button colour ' + h);
+    await page.click('.user-menu summary'); await page.click('[data-ui-toggle]');
+    expect(await page.evaluate(() => document.documentElement.dataset.ui) === '1', 'classic UI not applied');
+    await page.click('.user-menu summary'); await page.click('[data-ui-toggle]');
+    expect(await page.evaluate(() => document.documentElement.dataset.ui) === '2', 'UI 2 not restored');
+    await page.evaluate(() => nav('design')); await page.waitForSelector('.swatches', { timeout: 5000 });
+  });
   await step('Keine JavaScript-Fehler', async () => expect(!jsErrors.length, jsErrors.slice(0, 3).join(' | ')));
 
   await browser.close();
@@ -394,5 +409,6 @@ function totp(secret, at = Date.now()) {
   const unknown = fs.readFileSync(path.join(work, 'mock.log'), 'utf8').split('\n').filter(l => l.startsWith('UNKNOWN'));
   console.log(`\n${passes.length} bestanden, ${failures.length} fehlgeschlagen`);
   if (unknown.length) console.log('Vom Mock nicht unterstützte Aufrufe:\n  ' + unknown.join('\n  '));
+  try { console.log('API-Prüfbericht: ' + require('./report.cjs')(work, process.env.E2E_REPORT || undefined)) } catch (e) { console.log('Bericht nicht erstellt: ' + e.message) }
   if (failures.length) { console.log('Fehler:\n  ' + failures.join('\n  ') + '\nLogs: ' + work); process.exit(1) }
 })().catch(e => { console.error(e); for (const p of procs) p.kill(); process.exit(1) });

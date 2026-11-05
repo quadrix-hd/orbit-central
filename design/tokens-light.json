@@ -1,0 +1,216 @@
+{
+  "font": {
+    "sans": "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+    "mono": "ui-monospace, SFMono-Regular, Menlo, monospace"
+  },
+  "type": {
+    "xs": {
+      "size": 11.5,
+      "line": 16,
+      "weight": 500
+    },
+    "sm": {
+      "size": 12.5,
+      "line": 18,
+      "weight": 400
+    },
+    "base": {
+      "size": 13.5,
+      "line": 20,
+      "weight": 400
+    },
+    "md": {
+      "size": 15,
+      "line": 22,
+      "weight": 600
+    },
+    "lg": {
+      "size": 18,
+      "line": 26,
+      "weight": 600
+    },
+    "xl": {
+      "size": 24,
+      "line": 30,
+      "weight": 700
+    }
+  },
+  "space": [
+    0,
+    4,
+    8,
+    12,
+    16,
+    20,
+    24,
+    32,
+    48
+  ],
+  "control": {
+    "sm": 28,
+    "md": 34,
+    "lg": 40
+  },
+  "radius": {
+    "sm": 4,
+    "md": 6,
+    "lg": 8,
+    "pill": 999
+  },
+  "layout": {
+    "topbar": 52,
+    "content-max": 1680,
+    "gutter": 24,
+    "gutter-mobile": 12
+  },
+  "motion": {
+    "fast": "120ms",
+    "base": "180ms",
+    "ease": "cubic-bezier(.2,.8,.2,1)"
+  },
+  "_about": "Orbit Hell – Design-Tokens (Rollen). Prüfen: python3 contrast.py tokens-light.json",
+  "color": {
+    "bg": "#f3f4f6",
+    "surface": "#ffffff",
+    "surface-2": "#f8f9fb",
+    "border": "#e2e5ea",
+    "border-strong": "#cdd2da",
+    "border-input": "#868f9d",
+    "text": "#0f172a",
+    "text-muted": "#4f5a6a",
+    "text-subtle": "#667080",
+    "accent": "#c2410c",
+    "accent-bg": "#c2410c",
+    "accent-bg-hover": "#9a3412",
+    "on-accent": "#ffffff",
+    "accent-soft": "#fff1e7",
+    "accent-text": "#9a3412",
+    "success": "#15803d",
+    "success-soft": "#e9f7ef",
+    "warning": "#a15c07",
+    "warning-soft": "#fdf4e3",
+    "danger": "#b91c1c",
+    "danger-soft": "#fdeded",
+    "info": "#1d4ed8",
+    "info-soft": "#eaf1fe",
+    "neutral": "#475467",
+    "neutral-soft": "#eef0f3",
+    "nav": "#111827",
+    "nav-text": "#e5e7eb",
+    "nav-muted": "#9ca3af",
+    "focus": "#c2410c"
+  },
+  "pairs": [
+    [
+      "text",
+      "bg"
+    ],
+    [
+      "text",
+      "surface"
+    ],
+    [
+      "text",
+      "surface-2"
+    ],
+    [
+      "text-muted",
+      "surface"
+    ],
+    [
+      "text-muted",
+      "surface-2"
+    ],
+    [
+      "text-muted",
+      "bg"
+    ],
+    [
+      "text-subtle",
+      "surface"
+    ],
+    [
+      "accent",
+      "surface"
+    ],
+    [
+      "accent",
+      "bg"
+    ],
+    [
+      "on-accent",
+      "accent-bg"
+    ],
+    [
+      "on-accent",
+      "accent-bg-hover"
+    ],
+    [
+      "accent-text",
+      "accent-soft"
+    ],
+    [
+      "success",
+      "surface"
+    ],
+    [
+      "success",
+      "success-soft"
+    ],
+    [
+      "warning",
+      "surface"
+    ],
+    [
+      "warning",
+      "warning-soft"
+    ],
+    [
+      "danger",
+      "surface"
+    ],
+    [
+      "danger",
+      "danger-soft"
+    ],
+    [
+      "info",
+      "surface"
+    ],
+    [
+      "info",
+      "info-soft"
+    ],
+    [
+      "neutral",
+      "neutral-soft"
+    ],
+    [
+      "nav-text",
+      "nav"
+    ],
+    [
+      "nav-muted",
+      "nav"
+    ],
+    [
+      "border-input",
+      "surface",
+      "ui"
+    ],
+    [
+      "focus",
+      "surface",
+      "ui"
+    ],
+    [
+      "focus",
+      "bg",
+      "ui"
+    ]
+  ],
+  "shadow": {
+    "card": "0 1px 2px rgba(15,23,42,.05)",
+    "pop": "0 12px 32px rgba(15,23,42,.16)"
+  }
+}

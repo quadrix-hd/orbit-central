@@ -267,7 +267,10 @@ go run ./cmd/orbit export-preview
 ```
 
 End-to-End-Test gegen einen simulierten 3-Node-Cluster (Playwright, echter
-Orbit-Server im Live-Modus): `npm run e2e`.
+Orbit-Server im Live-Modus): `npm run e2e`. Er klickt alle Hauptfunktionen
+durch und schreibt einen **API-Prüfbericht** (HTML): jeder Proxmox-Aufruf pro
+Schritt mit Parametern und gleichwertigem `pvesh`-Kommando. Zielpfad mit
+`E2E_REPORT=/pfad/bericht.html npm run e2e` festlegen.
 
 Go 1.25+; Docker nutzt den festgelegten Toolchain-Stand. Für reale NoCloud-ISO-
 Erstellung außerhalb des Containers muss xorriso installiert sein. Go-Tests

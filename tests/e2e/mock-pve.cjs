@@ -206,7 +206,13 @@ function handler(local) {
     req.on('data', c => chunks.push(c));
     req.on('end', () => {
       const url = new URL(req.url, 'https://x'), p = url.pathname.replace(/^\/api2\/json/, ''), body = req.method === 'GET' ? {} : parseBody(req, Buffer.concat(chunks));
-      const send = (status, payload) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(payload)) };
+      const send = (status, payload) => {
+        if (process.env.MOCK_RECORD && p !== '/version') {
+          const redact = o => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => [k, /password|secret|ticket|token|key/i.test(k) ? '***' : typeof v === 'string' && v.length > 300 ? v.slice(0, 300) + '…' : v]));
+          fs.appendFileSync(process.env.MOCK_RECORD, JSON.stringify({ t: Date.now(), via: local, method: req.method, path: p, query: Object.fromEntries(url.searchParams), body: redact(body), status, error: status >= 400 ? payload.message : undefined }) + '\n');
+        }
+        res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(payload));
+      };
       if (!String(req.headers.authorization || '').startsWith('PVEAPIToken=')) return send(401, { data: null, message: 'authentication failure' });
       try {
         const data = route(local, req.method, p, url.searchParams, body);

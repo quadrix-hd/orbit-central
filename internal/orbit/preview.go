@@ -11,7 +11,7 @@ import (
 
 // frontendAssets lists every versioned stylesheet and script in load order.
 // The static file allowlist, the preview export and index.html follow it.
-var frontendAssets = []string{"app.css", "app.js", "vm-workspace.js", "infrastructure.js", "management.js", "live.js", "operations.js", "automation.js", "bootstrap.js"}
+var frontendAssets = []string{"app.css", "ui.css", "app.js", "vm-workspace.js", "infrastructure.js", "management.js", "live.js", "operations.js", "automation.js", "bootstrap.js"}
 
 func ExportPreview() error {
 	return guarded(func() {
