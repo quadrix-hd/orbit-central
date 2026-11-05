@@ -391,6 +391,17 @@ function totp(secret, at = Date.now()) {
     const op = await waitOp(o => o.vmid === 102 && o.action === 'shutdown');
     expect(op.status === 'completed' && op.requested_by === 'olga', 'status ' + op.status + ' by ' + op.requested_by);
   });
+  await step('Oberfläche: UI 2 aktiv, Umschalter auf klassisch und zurück, Design-System-Seite', async () => {
+    expect(await page.evaluate(() => document.documentElement.dataset.ui) === '2', 'UI 2 not active');
+    await page.evaluate(() => nav('vms')); await page.waitForSelector('#page button.primary', { timeout: 5000 });
+    const h = await page.$eval('#page button.primary', e => getComputedStyle(e).backgroundColor);
+    expect(h === 'rgb(194, 65, 12)', 'primary button colour ' + h);
+    await page.click('.user-menu summary'); await page.click('[data-ui-toggle]');
+    expect(await page.evaluate(() => document.documentElement.dataset.ui) === '1', 'classic UI not applied');
+    await page.click('.user-menu summary'); await page.click('[data-ui-toggle]');
+    expect(await page.evaluate(() => document.documentElement.dataset.ui) === '2', 'UI 2 not restored');
+    await page.evaluate(() => nav('design')); await page.waitForSelector('.swatches', { timeout: 5000 });
+  });
   await step('Keine JavaScript-Fehler', async () => expect(!jsErrors.length, jsErrors.slice(0, 3).join(' | ')));
 
   await browser.close();
