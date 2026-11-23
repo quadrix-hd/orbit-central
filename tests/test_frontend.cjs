@@ -10,6 +10,14 @@ assert.equal(run('state.mode'),'demo');assert.equal(run('state.authenticated'),t
 for(const page of ['overview','clusters','vms','market','jobs','settings']){run(`nav('${page}')`);assert.ok(element('#app').innerHTML.includes('ORBIT CENTRAL'));assert.ok(!element('#app').innerHTML.includes('undefined'));}
 assert.ok(run("statusTag('offline')").includes('fail'));assert.ok(run("statusTag('unknown')").includes('neutral'));
 assert.equal(run('totals().nodes.length'),3);assert.equal(run('totals().vms.length'),6);
+for (const query of ['prod pve-01', '  PVE-01  prod  ']) {
+  run('state.query=' + JSON.stringify(query));
+  assert.equal(run("visibleVMs().map(vm => vm.name).join(',')"), 'gateway-01,web-01');
+}
+run("state.query='prod pve-03 102'");
+assert.equal(run("visibleVMs().map(vm => vm.name).join(',')"), 'postgres-01');
+run("state.query='backup pve-01'");
+assert.equal(run('visibleVMs().length'), 0);
 run("state.query='postgres';state.category='Alle'");assert.equal((run('market()').match(/class="appcard"/g)||[]).length,1);
 run("state.query='';state.category='Container';state.marketTab='custom'");assert.equal((run('market()').match(/class="appcard"/g)||[]).length,2);
 assert.equal(run("esc('<script>')"),'&lt;script&gt;');
