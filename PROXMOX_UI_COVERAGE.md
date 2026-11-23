@@ -55,7 +55,7 @@ Cluster steht laut [ACCEPTANCE_MATRIX.md](ACCEPTANCE_MATRIX.md) noch aus.
 
 | Bereich | Stand | Bemerkung |
 | --- | --- | --- |
-| Erstellen | ◐ | Grundkonfiguration; UEFI/TPM/Cloud-init im Assistenten fehlen |
+| Erstellen | ◐ | Grundkonfiguration, optional UEFI mit EFI-Disk, TPM 2.0 und Cloud-init-Laufwerk mit DHCP; Gast-Image separat bereitstellen |
 | Start, Herunterfahren, Neustart | ✅ | |
 | Hart ausschalten, Reset, Pausieren, Fortsetzen | ✅ | Neu |
 | Klonen (voll/verknüpft), in Vorlage umwandeln | ✅ | Neu |
@@ -64,7 +64,7 @@ Cluster steht laut [ACCEPTANCE_MATRIX.md](ACCEPTANCE_MATRIX.md) noch aus.
 | CPU, RAM, Ballooning, CPU-Typ, Sockets | ✅ | |
 | Disks hinzufügen/vergrößern/verschieben | ✅ | |
 | Netzwerkkarten, ISO/CD | ✅ | |
-| EFI, TPM, PCI/USB-Passthrough, Serial, Audio | ✗ | |
+| EFI, TPM, PCI/USB-Passthrough, Serial, Audio | ◐ | EFI und TPM bei Erstellung; nachträgliche Hardwareverwaltung offen |
 | Cloud-init bearbeiten | ✗ | Nur über Marketplace-Bereitstellung |
 | Optionen (Boot, Autostart, Agent, Machine) | ✅ | |
 | Snapshots | ✅ | |

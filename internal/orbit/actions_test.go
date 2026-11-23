@@ -223,6 +223,21 @@ func TestCreateAndRestoreDoNotOverwrite(t *testing.T) {
 		})
 	}
 }
+func TestCreateOptionalHardware(t *testing.T) {
+	s, _ := actionServer(t)
+	d := operationInput("create")
+	for key, value := range (doc{"name": "new-vm", "vmid": 101, "storage": "local", "bridge": "vmbr0", "cpu": 2, "ram": 4, "disk": 16, "uefi": true, "tpm": true, "cloudinit": true}) {
+		d[key] = value
+	}
+	op := submit(t, s, d)
+	args := op["args"].(doc)
+	for key, want := range (doc{"bios": "ovmf", "efidisk0": "local:1,efitype=4m", "tpmstate0": "local:1,version=v2.0", "ide0": "local:cloudinit", "ipconfig0": "ip=dhcp", "boot": "order=scsi0"}) {
+		if args[key] != want {
+			t.Fatalf("%s: got %v, want %v", key, args[key], want)
+		}
+	}
+}
+
 func TestJobCrashMarkersNeverDispatch(t *testing.T) {
 	for _, stage := range []string{"clone_submitting", "configure_submitting", "resize_submitting", "start_submitting"} {
 		s, f := actionServer(t)

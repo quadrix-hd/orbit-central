@@ -430,6 +430,17 @@ func (s *Server) submitOperation(ctx context.Context, d doc) (doc, int) {
 			if iso != "" {
 				a["boot"] = "order=ide2;scsi0"
 			}
+			if d["uefi"] == true {
+				a["bios"] = "ovmf"
+				a["efidisk0"] = store + ":1,efitype=4m"
+			}
+			if d["tpm"] == true {
+				a["tpmstate0"] = store + ":1,version=v2.0"
+			}
+			if d["cloudinit"] == true {
+				a["ide0"] = store + ":cloudinit"
+				a["ipconfig0"] = "ip=dhcp"
+			}
 		}
 		return s.insertTask(ctx, "operations", key, newTask(cid, node, name, action, id, a))
 	}
