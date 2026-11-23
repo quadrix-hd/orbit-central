@@ -263,7 +263,7 @@
 }
 
 .host-capacity .usage {min-width:0}
-.kpi-row .kpi > div > span {white-space:normal; overflow:visible; overflow-wrap:anywhere}
+.kpi-row .kpi > div > span:not(.ring):not(.kpi-icon) {white-space:normal; overflow:visible; overflow-wrap:anywhere}
 @media(max-width:700px) {
   .kpi-row .kpi {display:grid; grid-template-columns:auto minmax(0,1fr); align-content:center; gap:8px}
   .kpi-row .ring-md, .kpi-row .kpi-icon {width:34px; height:34px}
