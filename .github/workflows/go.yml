@@ -24,6 +24,15 @@ jobs:
       - run: npx --no-install playwright-core install --with-deps chromium
       - run: npm run e2e
         timeout-minutes: 20
+        env:
+          ORBIT_LAYOUT_SHOTS: ${{ runner.temp }}/orbit-layout
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-layout
+          path: ${{ runner.temp }}/orbit-layout/*.png
+          if-no-files-found: ignore
+          retention-days: 7
       - run: docker build -t orbit-go:test .
       - name: Runtime has Go, no Python, and console/ISO assets
         run: docker run --rm --entrypoint sh orbit-go:test -c '! command -v python3 && orbit version && command -v xorriso && test -f /opt/orbit-novnc/core/rfb.js'
