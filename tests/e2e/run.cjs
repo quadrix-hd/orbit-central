@@ -117,13 +117,14 @@ function totp(secret, at = Date.now()) {
         const geometry = await page.evaluate(() => ({
           width: document.documentElement.clientWidth,
           content: document.documentElement.scrollWidth,
+          truncated: [...document.querySelectorAll('.kpi > div > span')].filter(el=>el.scrollWidth>el.clientWidth+1).map(el=>el.textContent),
           clipped: [...document.querySelectorAll('.health-card,.cluster-card,.host-capacity,.kpi')].filter(el => {
             const box=el.getBoundingClientRect();
             return box.left < -1 || box.right > innerWidth + 1;
           }).map(el=>el.className)
         }));
         await page.screenshot({path:path.join(destination,'dashboard-'+width+'.png'),fullPage:true});
-        expect(geometry.content <= geometry.width+1 && !geometry.clipped.length,
+        expect(geometry.content <= geometry.width+1 && !geometry.clipped.length && !geometry.truncated.length,
           'Layout '+width+': '+JSON.stringify(geometry));
         expect(await page.locator('.compute-context [data-live-badge]').isVisible(), 'Live-Status fehlt '+width);
       }
