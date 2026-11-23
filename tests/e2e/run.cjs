@@ -4,7 +4,7 @@
 // Usage: npm run e2e   (requires Go, openssl and Playwright/Chromium)
 const { execFileSync, spawn } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-core');
 
 const root = path.resolve(__dirname, '..', '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-e2e-'));
@@ -104,6 +104,39 @@ function totp(secret, at = Date.now()) {
     const text = await page.textContent('#page');
     expect(/Infrastruktur-Health/.test(text) && /3\/3/.test(text.replace(/\s/g, '')), 'dashboard content');
     await shot('dashboard');
+  });
+  await step('Live-Dashboard: Desktop, Tablet und Smartphone', async () => {
+    expect(await page.evaluate(() => state.mode === 'live'), 'Live-Modus fehlt');
+    expect(!await page.locator('.demo-banner').isVisible(), 'Demo-Banner im Live-Modus');
+    const destination = process.env.ORBIT_LAYOUT_SHOTS || work;
+    fs.mkdirSync(destination, {recursive:true});
+    try {
+      for (const width of [1440, 768, 390]) {
+        await page.setViewportSize({width, height:900});
+        await page.evaluate(() => document.fonts.ready);
+        const geometry = await page.evaluate(() => ({
+          width: document.documentElement.clientWidth,
+          content: document.documentElement.scrollWidth,
+          truncated: [...document.querySelectorAll('.kpi > div > span')].filter(el=>el.scrollWidth>el.clientWidth+1).map(el=>el.textContent),
+          clipped: [...document.querySelectorAll('.health-card,.cluster-card,.host-capacity,.kpi')].filter(el => {
+            const box=el.getBoundingClientRect();
+            return box.left < -1 || box.right > innerWidth + 1;
+          }).map(el=>el.className)
+        }));
+        await page.screenshot({path:path.join(destination,'dashboard-'+width+'.png'),fullPage:true});
+        expect(geometry.content <= geometry.width+1 && !geometry.clipped.length && !geometry.truncated.length,
+          'Layout '+width+': '+JSON.stringify(geometry));
+        expect(await page.locator('.compute-context [data-live-badge]').isVisible(), 'Live-Status fehlt '+width);
+      }
+      await page.locator('[data-cluster-open]').first().click();
+      const scope=page.locator('#compute-scope');
+      expect(await scope.isVisible(), 'Clusterauswahl auf Smartphone fehlt');
+      await scope.selectOption('all');
+      expect(await page.evaluate(()=>state.scope==='all'), 'Clusterwechsel fehlgeschlagen');
+    } finally {
+      await page.setViewportSize({width:1440,height:900});
+      await page.evaluate(()=>nav('overview'));
+    }
   });
   await step('VM-Liste: alle Gäste, Filter, Sortierung', async () => {
     await page.evaluate(() => nav('vms'));

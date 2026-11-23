@@ -316,6 +316,7 @@ func (s *Server) acknowledgeAlert(id, note string) doc {
 // Evaluation ------------------------------------------------------------------
 
 type finding struct {
+	upid string
 	id, rule, severity, kind, connection, object, title, message string
 	value                                                        float64
 }
@@ -508,7 +509,7 @@ func (s *Server) taskFindings(ctx context.Context, c Connection, rule alertRule,
 		if target != "" {
 			title += ": " + target
 		}
-		out = append(out, finding{id: alertID("task_failed", c.ID, str(t["upid"])), rule: "task_failed", severity: map[bool]string{true: "critical", false: "warning"}[kind == "vzdump"], kind: "event", connection: c.ID, object: str(t["node"]), title: title + " (" + str(t["node"]) + ")", message: status})
+		out = append(out, finding{id: alertID("task_failed", c.ID, str(t["upid"])), rule: "task_failed", upid: str(t["upid"]), severity: map[bool]string{true: "critical", false: "warning"}[kind == "vzdump"], kind: "event", connection: c.ID, object: str(t["node"]), title: title + " (" + str(t["node"]) + ")", message: status})
 	}
 	s.Alerting.mu.Lock()
 	s.Alerting.cursor[c.ID] = newest
@@ -552,6 +553,9 @@ func (s *Server) recordFindings(sc alertScan, ts float64) []doc {
 			a = doc{"id": id, "rule": f.rule, "kind": f.kind, "connection_id": f.connection, "object": f.object, "first_seen": ts, "acknowledged": false}
 			a["state"] = "firing"
 			notify = append(notify, a)
+		}
+		if f.upid != "" {
+			a["upid"] = f.upid
 		}
 		a["severity"], a["title"], a["message"], a["value"], a["last_seen"] = f.severity, f.title, f.message, f.value, ts
 		s.writeAlert(a)

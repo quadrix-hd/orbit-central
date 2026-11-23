@@ -10,6 +10,33 @@ assert.equal(run('state.mode'),'demo');assert.equal(run('state.authenticated'),t
 for(const page of ['overview','clusters','vms','market','jobs','settings']){run(`nav('${page}')`);assert.ok(element('#app').innerHTML.includes('ORBIT CENTRAL'));assert.ok(!element('#app').innerHTML.includes('undefined'));}
 assert.ok(run("statusTag('offline')").includes('fail'));assert.ok(run("statusTag('unknown')").includes('neutral'));
 assert.equal(run('totals().nodes.length'),3);assert.equal(run('totals().vms.length'),6);
+run(`(() => {
+  const saved = {scope:state.scope, jobs:state.jobs, operations:state.operations, alertData:state.alertData, resources:state.resources};
+  try {
+    state.scope='a';
+    state.jobs=[{connection_id:'b',status:'failed'}];
+    state.operations=[];
+    state.alertData={alerts:[
+      {connection_id:'a',state:'firing',acknowledged:true,severity:'critical'},
+      {connection_id:'b',state:'firing',severity:'critical'}
+    ]};
+    state.jobs.push({connection_id:'a',status:'failed',created:1});
+    if (scopedAlerts().length!==1) throw Error('Alert list includes another cluster');
+    const health=healthScore(totals(),null);
+    if (health.crit!==1 || health.failed!==0) throw Error('Cluster scope or acknowledged alarm lost');
+    state.jobs.push({connection_id:'a',status:'needs_attention',created:1});
+    if (healthScore(totals(),null).failed!==1) throw Error('Old unresolved task hidden');
+    const backup = demoAlerts().alerts.find(a=>a.rule==='task_failed');
+    if (!demoPveTasks().some(row=>row.upid===backup.upid && row.status!=='OK')) throw Error('Missing demo task');
+    state.resources=['running','stopped','unknown','paused'].map((status,i)=>({type:'qemu',connection_id:'a',vmid:i+100,status}));
+    const html=overview();
+    if (!html.includes('1 gestoppt') || !html.includes('2 sonstiger Status')) throw Error('Guest status counts');
+    if (vmFilters.stopped(state.resources[2])) throw Error('Unknown VM listed as stopped');
+    state.scope='demo';
+    if (!overview().includes('Keine Hostdaten')) throw Error('Empty cluster shown as online');
+    if (clusterCondition({stale:true,nodes:[],online:[]}).label!=='Daten veraltet') throw Error('Stale cluster status');
+  } finally {Object.assign(state,saved)}
+})()`);
 run("state.query='postgres';state.category='Alle'");assert.equal((run('market()').match(/class="appcard"/g)||[]).length,1);
 run("state.query='';state.category='Container';state.marketTab='custom'");assert.equal((run('market()').match(/class="appcard"/g)||[]).length,2);
 assert.equal(run("esc('<script>')"),'&lt;script&gt;');

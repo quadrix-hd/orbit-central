@@ -241,3 +241,30 @@
 :root[data-ui="2"] button.text-button.danger{color:var(--c-danger)!important;font-weight:500}
 :root[data-ui="2"] .text-button.danger:not(:hover){text-decoration:none}
 :root[data-ui="2"] .panel-note{margin:var(--s-3) var(--s-4)!important;color:var(--c-text-muted);font-size:var(--t-sm)}
+
+.compute-context {display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:10px 0}
+.compute-context .live-badge {display:inline-flex; margin:0 0 0 auto}
+.compute-context .scope-select {max-width:100%}
+.compute-context select {max-width:100%; min-width:0}
+.host-capacity {display:grid; grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,1fr)); align-items:center; gap:12px; padding:10px 0}
+.host-capacity + .host-capacity {border-top:1px solid var(--line)}
+.host-capacity b, .cluster-card header b {overflow-wrap:anywhere}
+.host-capacity > .muted {grid-column:span 2}
+.host-capacity small {color:var(--muted)}
+@media(max-width:700px) {
+  .health-card, .cluster-grid, .content-grid {grid-template-columns:minmax(0,1fr)}
+  .health-main {align-items:flex-start; gap:10px}
+  .cluster-metrics {grid-template-columns:repeat(auto-fit,minmax(64px,1fr))}
+  .health-facts span, .health-title button {white-space:normal}
+  .kpi-row {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi {min-width:0; flex-wrap:wrap}
+  .pagehead .actions, .table-toolbar {flex-wrap:wrap}
+  .panel, .panelhead, .cluster-card {min-width:0}
+}
+
+.host-capacity .usage {min-width:0}
+.kpi-row .kpi > div > span:not(.ring):not(.kpi-icon) {white-space:normal; overflow:visible; overflow-wrap:anywhere}
+@media(max-width:700px) {
+  .kpi-row .kpi {display:grid; grid-template-columns:auto minmax(0,1fr); align-content:center; gap:8px}
+  .kpi-row .ring-md, .kpi-row .kpi-icon {width:34px; height:34px}
+}
