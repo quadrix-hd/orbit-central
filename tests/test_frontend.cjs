@@ -20,8 +20,14 @@ run(`(() => {
       {connection_id:'a',state:'firing',acknowledged:true,severity:'critical'},
       {connection_id:'b',state:'firing',severity:'critical'}
     ]};
+    state.jobs.push({connection_id:'a',status:'failed',created:1});
+    if (scopedAlerts().length!==1) throw Error('Alert list includes another cluster');
     const health=healthScore(totals(),null);
     if (health.crit!==1 || health.failed!==0) throw Error('Cluster scope or acknowledged alarm lost');
+    state.jobs.push({connection_id:'a',status:'needs_attention',created:1});
+    if (healthScore(totals(),null).failed!==1) throw Error('Old unresolved task hidden');
+    const backup = demoAlerts().alerts.find(a=>a.rule==='task_failed');
+    if (!demoPveTasks().some(row=>row.upid===backup.upid && row.status!=='OK')) throw Error('Missing demo task');
     state.resources=['running','stopped','unknown','paused'].map((status,i)=>({type:'qemu',connection_id:'a',vmid:i+100,status}));
     const html=overview();
     if (!html.includes('1 gestoppt') || !html.includes('2 sonstiger Status')) throw Error('Guest status counts');

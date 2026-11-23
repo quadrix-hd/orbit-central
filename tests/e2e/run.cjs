@@ -4,7 +4,7 @@
 // Usage: npm run e2e   (requires Go, openssl and Playwright/Chromium)
 const { execFileSync, spawn } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-core');
 
 const root = path.resolve(__dirname, '..', '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'orbit-e2e-'));

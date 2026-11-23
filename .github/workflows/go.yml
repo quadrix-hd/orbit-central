@@ -21,6 +21,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npx --no-install playwright-core install --with-deps chromium
+      - run: npm run e2e
+        timeout-minutes: 20
       - run: docker build -t orbit-go:test .
       - name: Runtime has Go, no Python, and console/ISO assets
         run: docker run --rm --entrypoint sh orbit-go:test -c '! command -v python3 && orbit version && command -v xorriso && test -f /opt/orbit-novnc/core/rfb.js'
